@@ -3,15 +3,15 @@
 ## 1. Prerequisites
 
 - **Python**: `3.11+` (tested on Python `3.13.2`)
-- **Node.js**: `18.x` or `20.x+`
-- **PostgreSQL**: PostgreSQL 14+ database instance (e.g. Supabase, Neon, or local Postgres)
-- **Google Cloud / AI Studio**: Active Google Cloud project with Vertex AI / Gemini API enabled
+- **Node.js**: `18.x` or `20.x+` (with `npm`, `pnpm`, or `yarn`)
+- **PostgreSQL**: PostgreSQL 14+ database instance (Supabase, Neon, or local PostgreSQL)
+- **Google Cloud / AI Studio**: Active Google Gemini API Key (`gemini-3.7-flash`)
 
 ---
 
 ## 2. Environment Variables Configuration
 
-Create a `.env` file in the root of the project by copying from [`.env.example`](file:///g:/Stuff/Study/Programs/QuizLoop-Interactive-AI-Quiz-Assessment-Platform/.env.example):
+Create a `.env` file in the root directory by copying from [`.env.example`](../.env.example):
 
 ```bash
 cp .env.example .env
@@ -19,100 +19,93 @@ cp .env.example .env
 
 ### Essential Configuration Keys:
 ```env
-# 1. Google Gemini AI & Vertex AI
+# 1. Google Gemini AI Core
 GEMINI_API_KEY=AIzaSy...YourGeminiApiKey
-GEMINI_MODEL_NAME=gemini-2.5-flash
-GOOGLE_CLOUD_PROJECT=gen-lang-client-0470874118
-GOOGLE_CLOUD_LOCATION=us-central1
+GEMINI_MODEL_NAME=gemini-3.7-flash
 
-# 2. LangSmith Observability
+# 2. PostgreSQL Database Connection
+DATABASE_URL=postgresql://postgres.xxx:password@aws-0-us-east-1.pooler.supabase.com:6543/postgres
+
+# 3. Supabase PDF Storage (Optional / Fallback to Local)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOi...
+
+# 4. LangSmith Observability & Tracing (Optional)
 LANGSMITH_TRACING=true
-LANGSMITH_API_KEY=lsv2_pt_...YourLangSmithKey
+LANGSMITH_API_KEY=lsv2_pt_...
 LANGSMITH_PROJECT=quizloop-platform
 LANGSMITH_ENDPOINT=https://api.smith.langchain.com
-
-# 3. PostgreSQL Database
-POSTGRES_URL=postgresql://postgres.xxx:password@aws-0-region.pooler.supabase.com:6543/postgres
-
-# 4. Supabase Storage (Server Backend)
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=sb_secret_...YourSecretKey
-
-# 5. FastAPI Backend
-FASTAPI_HOST=0.0.0.0
-FASTAPI_PORT=8000
-NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
 ---
 
-## 3. Installation & Running Locally
+## 3. Local Development Setup
 
-### Terminal 1: Setup & Run Python FastAPI Backend
+### Backend Service (FastAPI)
+
 ```bash
-# 1. Navigate to repository root
-cd /path/to/QuizLoop-Interactive-AI-Quiz-Assessment-Platform
+# Navigate to backend
+cd backend
 
-# 2. Create virtual environment and install dependencies
-python -m venv backend/.venv
-.\backend\.venv\Scripts\activate
-pip install -r backend/requirements.txt
+# Create & activate virtual environment
+python -m venv venv
 
-# 3. Start FastAPI with auto-reload
-uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port 8000 --reload
+# Windows PowerShell:
+.\venv\Scripts\activate
+# macOS/Linux:
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run migrations (auto-applied on startup) & launch dev server
+uvicorn app.main:app --reload --port 8000
 ```
 
-*FastAPI will automatically execute initial database migrations on startup.*
-- **API URL**: `http://localhost:8000`
-- **Interactive Swagger Docs**: `http://localhost:8000/docs`
-- **Health Check**: `http://localhost:8000/health`
+The API documentation is accessible at `http://localhost:8000/docs`.
 
----
+### Frontend Web App (Next.js 16)
 
-### Terminal 2: Setup & Run Next.js Frontend
 ```bash
-# 1. Install Node dependencies
+# In the root project directory
 npm install
 
-# 2. Start Next.js development server
+# Run the development server
 npm run dev
 ```
 
-- **Web UI**: `http://localhost:3000`
-- *All `/api/*` requests will automatically proxy to the FastAPI backend on port 8000.*
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
 ## 4. Running Automated Test Suites
 
-### Backend Unit & Contract Tests (Pytest)
 ```bash
-backend/.venv/Scripts/pytest -c backend/pytest.ini backend/tests -v
-```
-Runs 15 automated test cases verifying:
-- API contracts & `CamelModel` serialization.
-- Dynamic Context Cache Manager lifecycle & 10k token thresholds.
-- LangGraph state reducers and self-healing routing boundaries.
-- Native C Tree-sitter JSX AST parsing.
+# Navigate to backend
+cd backend
 
-### Frontend Production Build
-```bash
-npm run build
+# Run the entire test suite
+python -m pytest tests/ -v
+
+# Run pedagogical API flow tests
+python -m pytest tests/test_learning_api_flow.py -v
+
+# Run pedagogical graph behavior & HITL refinement tests
+python -m pytest tests/test_pedagogical_pipeline.py -v
 ```
-Executes Webpack bundling and full TypeScript type checking.
 
 ---
 
-## 5. Troubleshooting & FAQ
+## 5. Operations and Troubleshooting
 
-### Q1: Gemini API returns `429 RESOURCE_EXHAUSTED`
-- **Cause**: The API key is in a project configured in "Prepay" mode without credit balance.
-- **Fix**: Link your project to your standard Google Cloud Billing Account (with your promotional credits), or authenticate via Vertex AI using `gcloud auth application-default login`.
+### Common Diagnostics
 
-### Q2: Database returns prepared statement collision errors
-- **Cause**: Connecting to Supabase PgBouncer pooler in Transaction Mode.
-- **Fix**: The backend automatically sets `statement_cache_size=0` on `asyncpg` pool initialization in `backend/app/db.py`.
-
-### Q3: Next.js Turbopack fails on Windows with `os error 1314`
-- **Cause**: Windows requires Developer Mode or Administrator privileges for symlink creation during Turbopack builds.
-- **Fix**: The build scripts in `package.json` are pre-configured with `--webpack` for reliable, permission-free cross-platform compilation.
+1. **PDF Upload Fails Validation**:
+   - Verify the file is $\le 25\text{MB}$ and possesses a valid `%PDF` binary header.
+2. **502 on Plan Approval or Re-drafting**:
+   - Check `GEMINI_API_KEY` quota and rate limits.
+   - Review `backend/logs/` for upstream LLM error logs.
+3. **Database Connection Errors**:
+   - Ensure the database URL uses pooled connections if running behind AWS/Supabase Supavisor.
+   - Check that `001_initial_schema.sql` was applied successfully.

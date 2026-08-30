@@ -2,9 +2,9 @@
 
 <div align="center">
 
-### Human-In-The-Loop AI Quiz and Pedagogical Assessment Engine
+### Human-In-The-Loop AI Assessment and Pedagogical Learning Engine
 
-Transform technical documents, textbooks, and research publications into structured assessments, human-curated curricula, and real-time interactive simulation sandboxes.
+Transform technical documents, research publications, and textbooks into structured curricula, human-curated lesson plans, adaptive quizzes with Socratic coaching, and comprehensive mastery analytics.
 
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-black?style=flat&logo=next.js)](https://nextjs.org/)
 [![React 19](https://img.shields.io/badge/React-19-61DAFB?style=flat&logo=react)](https://react.dev/)
@@ -14,7 +14,7 @@ Transform technical documents, textbooks, and research publications into structu
 [![LangGraph](https://img.shields.io/badge/LangGraph-Python-FF6F00?style=flat)](https://github.com/langchain-ai/langgraph)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-336791?style=flat&logo=postgresql)](https://www.postgresql.org/)
 
-[Key Features](#key-features) • [System Architecture](#system-architecture) • [Quick Start](#quick-start) • [Documentation Hub](#documentation-hub) • [Testing](#testing)
+[Key Features](#key-features) • [System Architecture](#system-architecture) • [Pedagogical Flow](#pedagogical-pipeline-flow) • [Quick Start](#quick-start) • [Documentation Hub](#documentation-hub) • [Testing](#testing)
 
 ---
 
@@ -22,12 +22,12 @@ Transform technical documents, textbooks, and research publications into structu
 
 ## Key Features
 
-- **Document-to-Assessment Ingestion**: Ingest dense research papers, syllabi, or lecture PDFs ($\le 25\text{MB}$) with automatic token-aware context caching.
-- **Human-in-the-Loop (HITL) Curriculum Approval**: The AI Master Planner drafts a structured pedagogical lesson plan; educators and students can inspect, customize, request adjustments, or approve before generation begins.
-- **Interactive Simulation Playgrounds**: Generates single-file dynamic React simulations (`App.js`) featuring real-time parameter controls, physics calculations, and canvas visualizations with goal-threshold verification.
-- **Tree-sitter AST and Self-Healing Reflection**: Native C bindings inspect generated React code for syntax integrity and module whitelists, triggering automated corrective retries before reaching the client runtime.
-- **Dynamic Mastery Reporting**: Generates Bloom's taxonomy analytics, mastery score distributions, weak-spot diagnostics, and personalized reinforcement recommendations.
-- **Low-Latency Streaming**: Asynchronous Server-Sent Events (SSE) deliver instant phase-by-phase status transitions and live feedback.
+- **Document Ingestion with Context Caching**: Ingest dense research papers, syllabi, and technical PDFs ($\le 25\text{MB}$) via the Google Gemini File API with token-aware context caching for reduced latency and token efficiency.
+- **Human-in-the-Loop (HITL) Curriculum Approval**: The AI Master Planner drafts a structured pedagogical curriculum; educators and learners inspect learning objectives, customize topic allocations, request prompt adjustments, or approve before question generation begins.
+- **Single-Pass Deck Synthesis**: Pre-generates the entire assessment deck in a single structured Gemini 3.7 call to ensure topic coherence, zero runtime latency per question, and strict answer-key isolation.
+- **Interactive Socratic Coaching**: Delivers scenario-based questions with multi-tier progressive hints and grounded on-demand conceptual explanations without spoiling answers.
+- **Comprehensive Mastery Reporting**: Produces Bloom's taxonomy analytics, objective-by-objective proficiency scores, strength and growth diagnostics, and personalized remediation reading plans.
+- **Stateful Resilience with LangGraph Checkpoints**: Built on LangGraph 1.x with PostgreSQL checkpointers and thread isolation, allowing paused human interrupts and seamless state resumption across network reconnects.
 
 ---
 
@@ -36,54 +36,86 @@ Transform technical documents, textbooks, and research publications into structu
 ```mermaid
 flowchart TD
     subgraph Client ["Client Tier (Next.js 16 + React 19)"]
-        UploadUI["PDF Uploader and File Validator"]
+        UploadUI["PDF Uploader & Config Selector"]
         HITL["Plan Approval Card (Human-in-the-Loop)"]
-        QuizUI["Adaptive MCQ and Socratic Hint Widget"]
-        SandboxUI["LivePreview Interactive Sandbox"]
-        MasteryUI["Mastery Analytics and Radar Report"]
+        QuizUI["Adaptive MCQ & Socratic Coach Widget"]
+        MasteryUI["Mastery Analytics & Radar Report"]
     end
 
     subgraph Backend ["API Tier (FastAPI + Asyncpg)"]
-        UploadAPI["/api/upload and /api/learning"]
-        StreamAPI["SSE Status Streams and Task Registry"]
-        SubmissionAPI["/api/submit and /api/interactive/goal-complete"]
+        UploadAPI["POST /api/upload"]
+        StateAPI["GET /api/learning/{id}/state"]
+        ApprovalAPI["POST /api/learning/{id}/approve-plan"]
+        QuizAPI["POST /api/learning/{id}/submit-mcq\nPOST /api/learning/{id}/hint\nPOST /api/learning/{id}/learn-more"]
+        ReportAPI["GET /api/learning/{id}/report"]
     end
 
-    subgraph MultiAgent ["Multi-Agent Tier (LangGraph + Gemini 3.7)"]
-        MasterPlan["1. Master Planner\n(Curriculum Design + Search Grounding)"]
-        QuestionPlan["2. Question Planner\n(Parallel Fan-Out)"]
-        Coder["3. Coder Agent\n(Dynamic Sandbox Synthesis)"]
-        Verifier["4. Tree-Sitter Verifier\n(AST Integrity and Reflection Loop)"]
+    subgraph Pipeline ["LangGraph Pedagogical Pipeline (Gemini 3.7 Flash)"]
+        PlanNode["1. Plan Node\n(Curriculum Extraction & Question Budgeting)"]
+        Interrupt1["2. Plan Review Node\n(LangGraph interrupt() - Await Approval)"]
+        DeckNode["3. Generate MCQ Deck Node\n(Single-Pass Structured Generation)"]
+        Interrupt2["4. Quiz Interaction Node\n(LangGraph interrupt() - Answer/Coach)"]
+        EvalNode["5. Evaluate Answer & Teach More Nodes\n(Deterministic Grading & Socratic Guidance)"]
+        SummaryNode["6. Summarize Lesson Node\n(Bloom's Mastery Analytics)"]
     end
 
-    subgraph Persistence ["Persistence and Observability"]
-        Postgres[("PostgreSQL Database\n(Sessions, MCQs, Mastery Reports)")]
-        SupabaseStorage[("Supabase Storage\n(PDF Blobs)")]
-        LangSmith[("LangSmith\n(Agent Tracing and Observability)")]
+    subgraph Storage ["Persistence Tier"]
+        Postgres[("PostgreSQL Database\n(Sessions, Checkpoints, Summary Reports)")]
+        SupabaseStorage[("Supabase Storage\n(Original PDF Blobs)")]
+        GeminiFileAPI[("Google Gemini File API\n(Cached Document Handles)")]
     end
 
-    UploadUI -->|Upload PDF| UploadAPI
-    UploadAPI --> MasterPlan
-    MasterPlan -->|Pedagogical Proposal| HITL
-    HITL -->|Approved Plan| QuestionPlan
-    QuestionPlan --> Coder
-    Coder --> Verifier
-    Verifier -->|Self-Healing Retry if AST Invalid| Coder
-    Verifier -->|Verified Code| Postgres
-    Backend -->|SSE Stream| SandboxUI
-    SubmissionAPI --> Postgres
+    UploadUI -->|1. Upload PDF| UploadAPI
+    UploadAPI -->|Store Blob| SupabaseStorage
+    UploadAPI -->|Register File| GeminiFileAPI
+    UploadAPI -->|Initialize Session| Postgres
+    UploadAPI -->|Spawn Pipeline| PlanNode
+
+    PlanNode --> Interrupt1
+    Interrupt1 -.->|Pause State| Postgres
+    HITL -->|2. Approve / Adjust / Reject| ApprovalAPI
+    ApprovalAPI -->|Command resume| Interrupt1
+    Interrupt1 -->|On Adjust: Re-draft| PlanNode
+    Interrupt1 -->|On Approve| DeckNode
+
+    DeckNode --> Interrupt2
+    Interrupt2 -.->|Serve Question| QuizUI
+    QuizUI -->|3. Submit / Hint / Learn More| QuizAPI
+    QuizAPI -->|Command resume| EvalNode
+    EvalNode -->|Next Question| DeckNode
+    EvalNode -->|Completed Deck| SummaryNode
+
+    SummaryNode -->|4. Save Mastery Report| Postgres
+    ReportAPI -->|Fetch Report| Postgres
     Postgres --> MasteryUI
-    MultiAgent -.-> LangSmith
 ```
+
+---
+
+## Pedagogical Pipeline Flow
+
+The platform executes a 5-stage lifecycle designed for high pedagogical rigor and transparency:
+
+```
+[ PDF Upload ] ──> [ Plan Draft ] ──> [ HITL Review ] ──> [ MCQ & Socratic Coach ] ──> [ Mastery Report ]
+                           │                  │
+                           └─ <Re-Draft Loop> ┘
+```
+
+1. **PDF Ingestion**: The student or educator uploads a document and sets question count (3 to 10), difficulty, and question style.
+2. **Curriculum Planning**: Gemini 3.7 analyzes the document structure and extracts 3 to 5 core learning objectives with proportional question weights.
+3. **HITL Review & Refinement**: The user inspects the proposed syllabus. Rejection or feedback triggers an automated re-drafting loop (up to 3 revisions before fallback).
+4. **Assessment & Socratic Tutoring**: The student steps through the question deck. Instant evaluation provides deterministic feedback without LLM lag, while Socratic hints and "Ask the Coach" explanations offer grounded guidance.
+5. **Mastery Analytics**: The session concludes with a detailed breakdown of cognitive performance across Bloom's levels, highlighting specific concepts mastered and targeted areas for improvement.
 
 ---
 
 ## Quick Start
 
 ### Prerequisites
-- **Node.js** 20+ and **pnpm** (or npm/yarn)
+- **Node.js** 20+ and **npm** (or pnpm/yarn)
 - **Python** 3.12+ (Python 3.13 recommended)
-- **PostgreSQL** 15+ database instance
+- **PostgreSQL** 15+ database instance (Supabase, Neon, or local)
 - **Google Gemini API Key** (`gemini-3.7-flash`)
 
 ### 1. Backend Setup
@@ -106,7 +138,7 @@ pip install -r requirements.txt
 
 # Configure environment variables
 cp .env.example .env
-# Edit .env with GEMINI_API_KEY and DATABASE_URL
+# Edit .env with your GEMINI_API_KEY and DATABASE_URL
 
 # Start FastAPI service
 uvicorn app.main:app --reload --port 8000
@@ -128,15 +160,15 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Documentation Hub
 
-Comprehensive architecture blueprints and technical references are located in the [`docs/`](docs/) directory:
+Detailed architecture specifications and technical references are available in the [`docs/`](docs/) directory:
 
 | Document | Description |
 | :--- | :--- |
-| **[System Architecture](docs/ARCHITECTURE.md)** | Deep dive into client, backend, streaming, and sandbox execution models. |
-| **[AI Agent Pipeline](docs/AI_AGENT_PIPELINE.md)** | LangGraph state machine, AST validation, dynamic thinking budgets, and reflection loops. |
-| **[API Reference](docs/API_REFERENCE.md)** | Complete REST and Server-Sent Event (SSE) endpoint contracts. |
-| **[Database Schema](docs/DATABASE_SCHEMA.md)** | PostgreSQL relational DDL, constraints, composite indexes, and data integrity. |
-| **[Getting Started and Operations](docs/GETTING_STARTED.md)** | Environment variables, local testing, migrations, and operational guidelines. |
+| **[System Architecture](docs/ARCHITECTURE.md)** | Client tier, FastAPI application architecture, LangGraph state persistence, and storage design. |
+| **[AI Agent Pipeline](docs/AI_AGENT_PIPELINE.md)** | Pedagogical StateGraph, node responsibilities, HITL interrupt/resume semantics, and reflection rules. |
+| **[API Reference](docs/API_REFERENCE.md)** | Complete REST contracts for PDF upload, state polling, plan approval, quiz execution, and mastery reporting. |
+| **[Database Schema](docs/DATABASE_SCHEMA.md)** | PostgreSQL relational DDL, session state schemas, summary reports, and migrations. |
+| **[Getting Started and Operations](docs/GETTING_STARTED.md)** | Environment variables, local setup instructions, test suites, and operational troubleshooting. |
 
 ---
 
@@ -147,8 +179,9 @@ Comprehensive architecture blueprints and technical references are located in th
 cd backend
 python -m pytest tests/ -v
 
-# Run API contract and validation tests
-python -m pytest tests/test_api_contracts.py -v
+# Run API contract and flow tests
+python -m pytest tests/test_learning_api_flow.py -v
+python -m pytest tests/test_pedagogical_pipeline.py -v
 ```
 
 ---

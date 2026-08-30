@@ -6,104 +6,101 @@
 flowchart TD
     subgraph Client [Client Tier: Next.js 16 + React 19]
         UploadUI[PDF Upload Component]
-        SSEListener[SSE EventSource Listener]
-        SandboxView[LivePreview Direct Sandbox]
-        GoalsPanel[Milestone Progress Panel]
+        PlanCard[PlanApprovalCard Component]
+        QuizWidget[MCQGenUIWidget Component]
+        ReportCard[MasteryReportCard Component]
     end
 
     subgraph API [API Tier: Python FastAPI Service - Port 8000]
-        UploadRouter[/api/upload & /api/interactive/upload/]
-        StatusRouter[/api/interactive/{id}/status - SSE]
-        LessonsRouter[/api/interactive/{id}/lessons]
-        GoalRouter[/api/interactive/{id}/goal-complete]
-        StreamHub[SessionStreamHub - Event Bus]
+        UploadRouter[/api/upload]
+        StateRouter[/api/learning/{id}/state]
+        ApprovalRouter[/api/learning/{id}/approve-plan]
+        QuizRouter[/api/learning/{id}/submit-mcq\n/api/learning/{id}/hint\n/api/learning/{id}/learn-more]
+        ReportRouter[/api/learning/{id}/report]
+        TaskReg[TaskRegistry - Async Job Dispatcher]
     end
 
-    subgraph Agents [Agent Tier: LangGraph Multi-Agent Pipeline]
-        CacheMgr[Dynamic Context Cache Manager\nThreshold: 10k Tokens | TTL: 600s]
-        MasterPlanNode[1. Master Planner Node\nThinking: High | Grounding: Active]
-        QuestionPlanNode[2. Question Planner Node\nParallel Fan-out with asyncio.gather]
-        CoderNode[3. Coder Node\nThinking: Low | 16k Output Budget]
-        VerifierNode[4. Tree-Sitter JSX Verifier Node\nNative C-AST Inspection]
-        SelfHealEdge{Valid AST?}
+    subgraph Agents [Agent Tier: LangGraph 1.x StateGraph]
+        PlanNode[1. Plan Node\nCurriculum Design]
+        PlanReviewNode[2. Plan Review Node\ninterrupt: Await Decision]
+        GenerateDeckNode[3. Generate MCQ Deck Node\nSingle-Pass Synthesis]
+        QuizInteractNode[4. Quiz Interaction Node\ninterrupt: Await Answer/Action]
+        EvalAnswerNode[5. Evaluate Answer Node\nDeterministic Scoring]
+        TeachMoreNode[6. Teach More Node\nSocratic Explanations]
+        SummarizeNode[7. Summarize Lesson Node\nBloom's Taxonomy Analytics]
     end
 
-    subgraph Storage [Persistence & Cloud Tier]
+    subgraph Storage [Persistence & Observability Tier]
         Supabase[(Supabase Storage: PDF Blob Store)]
         GeminiFileAPI[(Google Gemini File API)]
-        Postgres[(PostgreSQL 15+ TIMESTAMPTZ\nIndexes + Unique Constraints)]
+        Postgres[(PostgreSQL 15+ TIMESTAMPTZ\nSessions, Checkpoints & Reports)]
         LangSmith[(LangSmith Tracing Platform)]
     end
 
-    %% Upload Flow
+    %% Ingestion Flow
     UploadUI -->|1. Multipart Upload| UploadRouter
-    UploadRouter -->|2. Store Original| Supabase
-    UploadRouter -->|3. Register Active File| GeminiFileAPI
-    UploadRouter -->|4. Initialize Sessions| Postgres
-    UploadRouter -->|5. Spawn Background Task| StreamHub
+    UploadRouter -->|Store PDF Blob| Supabase
+    UploadRouter -->|Register Active File| GeminiFileAPI
+    UploadRouter -->|Initialize Session Row| Postgres
+    UploadRouter -->|Spawn Background Pipeline| TaskReg
+    TaskReg --> PlanNode
 
-    %% Agent Flow
-    StreamHub -->|6. Start Pipeline| CacheMgr
-    CacheMgr --> MasterPlanNode
-    MasterPlanNode --> QuestionPlanNode
-    QuestionPlanNode --> CoderNode
-    CoderNode --> VerifierNode
-    VerifierNode --> SelfHealEdge
-    SelfHealEdge -->|Syntax Error & Retries < 3| CoderNode
-    SelfHealEdge -->|Verified Valid JSX| Postgres
+    %% HITL Curriculum Flow
+    PlanNode --> PlanReviewNode
+    PlanReviewNode -.->|Pause & Checkpoint State| Postgres
+    PlanCard -->|2. Query State| StateRouter
+    StateRouter -.->|Read State| Postgres
+    PlanCard -->|3. Submit Decision| ApprovalRouter
+    ApprovalRouter -->|Command resume| PlanReviewNode
+    PlanReviewNode -->|On Adjust: Re-draft| PlanNode
+    PlanReviewNode -->|On Approve: Start Lesson| GenerateDeckNode
 
-    %% Streaming Flow
-    StreamHub -.->|Phase Events| StatusRouter
-    StatusRouter -.->|SSE Stream with 15s Heartbeats| SSEListener
+    %% Quiz & Tutoring Flow
+    GenerateDeckNode --> QuizInteractNode
+    QuizInteractNode -.->|Serve Public Question| QuizWidget
+    QuizWidget -->|4. Submit Answer / Hint / Learn More| QuizRouter
+    QuizRouter -->|Evaluate Answer| EvalAnswerNode
+    QuizRouter -->|Request Coaching| TeachMoreNode
+    TeachMoreNode --> QuizInteractNode
+    EvalAnswerNode -->|Next Question in Queue| GenerateDeckNode
+    EvalAnswerNode -->|Deck Complete| SummarizeNode
 
-    %% Interactive Sandbox Flow
-    SSEListener -->|Trigger on COMPLETE| LessonsRouter
-    LessonsRouter -->|Hydrate Verified Lessons| SandboxView
-    SandboxView -->|User achieves goal| GoalsPanel
-    GoalsPanel -->|Atomic SQL Upsert| GoalRouter
-    GoalRouter -->|ON CONFLICT DO UPDATE| Postgres
-
-    %% Observability
-    MasterPlanNode -.->|Run Traces| LangSmith
-    QuestionPlanNode -.->|Run Traces| LangSmith
-    CoderNode -.->|Run Traces| LangSmith
+    %% Mastery Summary Flow
+    SummarizeNode -->|5. Commit Summary Report| Postgres
+    ReportCard -->|6. Fetch Final Report| ReportRouter
+    ReportRouter -.->|Read Report| Postgres
 ```
 
 ---
 
-## 2. Architectural Subsystems
+## 2. Tier Breakdown and Architectural Responsibilities
 
-### A. API & Streaming Tier (FastAPI)
-- **Lifecycle Decoupling**: LangGraph agent tasks run inside dedicated `asyncio.Task` background supervisors managed by `SessionStreamHub`. 
-- **Resilience to Disconnections**: If a client closes the browser or refreshes the page mid-generation, the agent run **never aborts**. The background task completes, and reconnecting clients immediately receive an active state snapshot.
-- **Heartbeat & Buffering Safeguards**: `EventSourceResponse(ping=15)` emits periodic keep-alive comments. Standard headers (`X-Accel-Buffering: no`, `Cache-Control: no-cache, no-transform`) prevent Nginx, ALB, and Cloudflare reverse proxies from buffering or terminating idle streams during 20–40s LLM reasoning phases.
-- **CamelCase Parity**: All Pydantic request/response models derive from `CamelModel`, ensuring exact property alignment with TypeScript interfaces without frontend translation boilerplate.
+### Client Tier (Next.js 16 + React 19)
+- **Component Architecture**: Built around `PedagogicalWorkspace`, dynamically rendering `PDFUpload`, `PlanApprovalCard`, `MCQGenUIWidget`, and `MasteryReportCard`.
+- **State Hydration**: Uses graph checkpoint states from `/api/learning/{sessionId}/state` as the single source of truth.
+- **Client Resilience**: Supports instant retry on network errors, local optimistic updates, and clean state restoration on page reload.
 
----
+### API Tier (FastAPI + Asynchronous Workers)
+- **Entry Points**:
+  - `POST /api/upload`: Multipart document upload, file validation, and initial session creation.
+  - `GET /api/learning/{sessionId}/state`: Returns sanitized public pedagogical state (correct answers and answer keys are strictly stripped).
+  - `POST /api/learning/{sessionId}/approve-plan`: Awaited HITL resume endpoint for approve, adjust, or reject decisions.
+  - `POST /api/learning/{sessionId}/submit-mcq`: Instant deterministic evaluation without round-trip LLM latency.
+  - `POST /api/learning/{sessionId}/hint`: Socratic multi-tier hint generator.
+  - `POST /api/learning/{sessionId}/learn-more`: Deep conceptual tutoring grounded in the source PDF.
+  - `GET /api/learning/{sessionId}/report`: Retrieves the final Bloom's mastery report.
+- **Background Task Management**: Uses `TaskRegistry` to dispatch non-blocking background graph runs and track execution health.
 
-### B. Multi-Agent AI Engine (LangGraph + Gemini 3.7)
-- **Pedagogical 3-Tier Separation**:
-  1. *Curriculum Architecture*: Master Planner maps pedagogical milestones.
-  2. *Lab Specification*: Question Planner defines threshold-based, actionable goal conditions.
-  3. *Simulation Implementation*: Coder writes single-file React component sandboxes.
-- **Bounded Reflection / Self-Healing**: Tree-sitter verifies the JSX AST in a non-blocking worker thread. If syntax errors occur, the compiler state routes back to the Coder node with concrete line numbers and error diagnostics (capped at `max_retries = 3` and `recursion_limit = 12`).
-- **Dynamic Context Caching**: If the uploaded PDF exceeds **10,000 tokens**, the system creates an explicit, shared Gemini Context Cache (`ttl='600s'`). All parallel planner calls read from the same cache at a **75% discount**, cutting latency and token consumption dramatically.
+### Agent Tier (LangGraph 1.x Pedagogical Graph)
+- **Orchestration**: Asynchronous, cyclic StateGraph with native `interrupt()` and `Command(resume=...)` support.
+- **Answer Security**: The internal state (`mcq_queue`, `current_mcq`) retains full answer metadata in server memory, while the public endpoint filters all answers to prevent client-side inspection.
+- **Refinement Loop**: The plan review step supports up to 3 iterative re-drafts with human feedback before falling back to a structured default.
 
----
-
-### C. In-Browser Sandboxing & Execution Runtime (`LivePreview.tsx`)
-- **Direct Ref-Based Mounting**: Uses React 19 `createRoot(mountNodeRef.current)` directly inside an isolated DOM container.
-- **Sub-5ms Compilation**: Compiles generated JSX/TS using `sucrase.transform(code, { transforms: ["jsx", "typescript", "imports"] })`.
-- **Anti-Loop Reference Stabilization**: Goal completion callbacks are wrapped in a mutable `useRef` + `completedGoalsRef` Set to debounce and prevent recursive component remounting.
-- **Injected Execution Scope**:
-  - `React`, `useState`, `useEffect`, `useRef`, `useMemo`, `useCallback`
-  - `motion`, `AnimatePresence`, `useMotionValue`, `useTransform`, `useSpring`, `useAnimation`, `animate`
-  - `LucideIcons` (complete SVG icon collection)
-  - `completeGoal(index)` & `onGoalComplete(index)`
-
----
-
-### D. Relational Data Layer (PostgreSQL)
-- **Zero Lock Contention**: All 5 foreign key columns have dedicated B-Tree indexes, preventing table-wide sequential scans during cascade operations.
-- **Concurrency-Safe Upserts**: `goal_progress` enforces `UNIQUE (lesson_id, goal_index)` paired with atomic `INSERT ... ON CONFLICT (lesson_id, goal_index) DO UPDATE` statements.
-- **Token Usage Ledger**: Append-only auditing in `token_usage_logs` tracks input, thought, and output tokens per node alongside latency.
+### Persistence & Storage Tier
+- **PostgreSQL Database**:
+  - `pedagogical_sessions`: Stores session configuration, public state JSON, and internal state snapshots.
+  - `summary_report`: Stores final mastery assessments, cognitive level scores, strengths, and recommendations.
+  - `checkpoints`: Managed by LangGraph checkpointers for durable thread state.
+- **Supabase Storage**: Retains raw PDF document uploads.
+- **Google Gemini File API**: Provides persistent file handles for high-throughput multimodal Gemini context caching.
+- **LangSmith**: Full agent tracing with run trees for monitoring latency, token costs, and prompt executions.
