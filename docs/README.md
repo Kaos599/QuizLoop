@@ -1,6 +1,6 @@
-# 📚 SkillForge Documentation Hub
+# 📚 QuizLoop Documentation Hub
 
-Welcome to the comprehensive technical documentation for **SkillForge** — an enterprise-grade, interactive AI-powered quiz assessment and real-time scientific simulation learning platform.
+Welcome to the comprehensive technical documentation for **QuizLoop** — an interactive, human-in-the-loop AI-powered assessment and real-time simulation learning platform.
 
 ---
 
@@ -11,15 +11,14 @@ Welcome to the comprehensive technical documentation for **SkillForge** — an e
 | **[System Architecture](ARCHITECTURE.md)** | Full architectural blueprints, component breakdown, distributed streaming engine, and frontend sandboxing model. |
 | **[Database Schema & Integrity](DATABASE_SCHEMA.md)** | PostgreSQL relational schema, DDL migrations, composite unique constraints, B-Tree indexes, and automated triggers. |
 | **[AI Agent Pipeline & LangGraph](AI_AGENT_PIPELINE.md)** | Multi-agent StateGraph design, dynamic thinking budgets, selective Google Search grounding, Tree-sitter AST validation, and self-healing reflection loop. |
-| **[API Reference](API_REFERENCE.md)** | Complete specification of all REST endpoints, SSE status streams, and `CamelModel` request/response contracts. |
-| **[File & Directory Map](FILE_STRUCTURE.md)** | Exhaustive index of all core backend and frontend files, services, agents, schemas, and components. |
-| **[Getting Started & Operations](GETTING_STARTED.md)** | Step-by-step installation, environment variables configuration, running locally, test suites, and troubleshooting. |
+| **[API Reference](API_REFERENCE.md)** | Complete specification of all REST endpoints, SSE status streams, pedagogical HITL actions, and request/response contracts. |
+| **[Getting Started & Operations](GETTING_STARTED.md)** | Step-by-step installation, environment variables configuration, running locally, test suites, and operational troubleshooting. |
 
 ---
 
 ## 🎯 Platform Mission & Core Value Proposition
 
-SkillForge transforms static technical documents (PDF research papers, textbooks, lecture slides) into two dynamic learning modes:
+QuizLoop transforms static technical documents (PDF research papers, textbooks, lecture slides) into active, verified learning journeys:
 
 ```
                                   ┌────────────────────────┐
@@ -27,25 +26,26 @@ SkillForge transforms static technical documents (PDF research papers, textbooks
                                   │      Document PDF      │
                                   └───────────┬────────────┘
                                               │
-                     ┌────────────────────────┴────────────────────────┐
-                     ▼                                                 ▼
-        ┌─────────────────────────┐                       ┌─────────────────────────┐
-        │   Standard Assessment   │                       │  Interactive Simulation │
-        │        (MCQ Mode)       │                       │     (Playground Mode)   │
-        ├─────────────────────────┤                       ├─────────────────────────┤
-        │ • 5–8 Structured MCQs   │                       │ • 3–5 Interactive Labs  │
-        │ • Immediate feedback    │                       │ • Live sliders/controls │
-        │ • Socratic hints        │                       │ • 60 FPS physics canvas │
-        │ • Token-efficient run   │                       │ • Threshold-based goals │
-        └─────────────────────────┘                       └─────────────────────────┘
+                      ┌───────────────────────┴───────────────────────┐
+                      ▼                                               ▼
+         ┌─────────────────────────┐                     ┌─────────────────────────┐
+         │   Pedagogical / HITL    │                     │  Interactive Simulation │
+         │       (Quiz Mode)       │                     │     (Playground Mode)   │
+         ├─────────────────────────┤                     ├─────────────────────────┤
+         │ • Human Curated Plan    │                     │ • 3–5 Interactive Labs  │
+         │ • 5–8 Structured MCQs   │                     │ • Live sliders/controls │
+         │ • Socratic hints        │                     │ • 60 FPS physics canvas │
+         │ • Bloom's Mastery Gauge │                     │ • Threshold-based goals │
+         └─────────────────────────┘                     └─────────────────────────┘
 ```
 
-1. **Standard Assessment (MCQ Mode)**:
-   - High-rigor, comprehension-testing multiple choice questions.
-   - Socratic hints and in-depth explanations grounded in the source text.
+1. **Pedagogical Assessment (Quiz Mode with HITL)**:
+   - AI Master Planner drafts a curriculum plan with learning goals and key concepts.
+   - Educators/Students can inspect and approve or request adjustments.
+   - High-rigor MCQs with immediate Socratic hints and comprehensive mastery analytics.
 2. **Interactive Simulation (Playground Mode)**:
-   - Dynamic single-file React simulations (`App.js`) rendered in real-time in the browser.
-   - Students learn through direct experimentation by manipulating parameters (sliders, toggles) to achieve concrete pedagogical thresholds.
+   - Dynamic single-file React simulations (`App.js`) rendered in real-time in the browser sandbox.
+   - Students learn through direct experimentation by manipulating parameters to achieve concrete pedagogical thresholds.
 
 ---
 

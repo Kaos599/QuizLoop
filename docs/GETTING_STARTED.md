@@ -28,7 +28,7 @@ GOOGLE_CLOUD_LOCATION=us-central1
 # 2. LangSmith Observability
 LANGSMITH_TRACING=true
 LANGSMITH_API_KEY=lsv2_pt_...YourLangSmithKey
-LANGSMITH_PROJECT=skillforge-platform
+LANGSMITH_PROJECT=quizloop-platform
 LANGSMITH_ENDPOINT=https://api.smith.langchain.com
 
 # 3. PostgreSQL Database

@@ -1,4 +1,4 @@
-# 🏛️ SkillForge System Architecture
+# 🏛️ QuizLoop System Architecture
 
 ## 1. High-Level Architecture Blueprint
 

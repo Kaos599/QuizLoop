@@ -1,4 +1,4 @@
-# 🗄️ SkillForge Database Schema & Data Dictionary
+# 🗄️ QuizLoop Database Schema & Data Dictionary
 
 ## 1. Entity-Relationship (ER) Diagram
 
