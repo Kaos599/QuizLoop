@@ -67,7 +67,7 @@ class TaskRegistry:
         try:
             await coro
             record.status = "done"
-        except Exception as e:  # noqa: BLE001 — surfaced via GET task endpoint
+        except Exception as e:  # noqa: BLE001 - surfaced via GET task endpoint
             record.status = "failed"
             record.error = str(e)
             logger.warning(

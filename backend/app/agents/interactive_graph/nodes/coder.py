@@ -48,7 +48,7 @@ CRITICAL DESIGN INTEGRITY & ANTI-COLLISION RULES
 
 1. CLEAN COORDINATE & AXIS SYSTEMS:
    - If drawing graphs or coordinate planes: NEVER overlap multiple X-axes on top of each other. Use a single unified axis with clear color-coded curve legends or mode selectors.
-   - Place live scores and percentages inside structured cards or clean HUD badges — NEVER let raw unanchored `<text>` float directly on top of dynamic curves.
+   - Place live scores and percentages inside structured cards or clean HUD badges - NEVER let raw unanchored `<text>` float directly on top of dynamic curves.
 
 2. AVOID UNSTYLED HTML ELEMENTS:
    - Do NOT use unstyled browser `<select>` dropdowns (they have dark-on-dark clipping). Use `PillSelector` or custom styled buttons.

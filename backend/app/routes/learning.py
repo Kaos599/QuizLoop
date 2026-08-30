@@ -2,7 +2,7 @@
 
 All LLM-touching actions are dispatched as background pipeline resumptions
 and return immediately with a task_id + status. The frontend polls
-GET /state (backed by the graph checkpoint — single source of truth) every
+GET /state (backed by the graph checkpoint - single source of truth) every
 few seconds; GET /task/{task_id} reports the background job's own status.
 """
 import json
@@ -69,10 +69,10 @@ async def approve_plan(session_id: str, req: PlanApprovalRequest):
 @router.post("/{session_id}/submit-mcq")
 async def submit_mcq(session_id: str, req: SubmitMCQRequest):
     """Grade instantly against the server-side copy, then let the graph
-    progress (verdict + feedback are deterministic — no wait on LLM).
+    progress (verdict + feedback are deterministic - no wait on LLM).
 
     The graph advance is awaited here because with a pre-generated deck
-    (queue pop) it completes in milliseconds — so the response can carry
+    (queue pop) it completes in milliseconds - so the response can carry
     the NEXT question directly and the frontend never has to poll for it.
     """
     await _ensure_session(session_id)
@@ -92,7 +92,7 @@ async def submit_mcq(session_id: str, req: SubmitMCQRequest):
             diagnostic_feedback = opt.get("diagnostic_feedback", "")
             break
 
-    # Advance the graph synchronously — queue pop only, no LLM in the
+    # Advance the graph synchronously - queue pop only, no LLM in the
     # normal path (deck was pre-generated at plan approval).
     await resume_pedagogical_pipeline(session_id, {"action": "answer", "letter": letter})
 
@@ -100,7 +100,7 @@ async def submit_mcq(session_id: str, req: SubmitMCQRequest):
     next_mcq = await get_internal_current_mcq(session_id)
     next_mcq_public = _public_mcq(next_mcq) if next_mcq else None
     if next_mcq_public is not None and next_mcq_public.get("question") == mcq.get("question"):
-        # Same question (incorrect attempt) — nothing new to hand over.
+        # Same question (incorrect attempt) - nothing new to hand over.
         next_mcq_public = None
 
     return {
@@ -136,7 +136,7 @@ async def get_hint(session_id: str, req: HintRequest = None):  # type: ignore[as
 
 @router.post("/{session_id}/learn-more")
 async def learn_more(session_id: str, req: LearnMoreRequest):
-    """Ask the coach to explain the underlying concept — answer is never given.
+    """Ask the coach to explain the underlying concept - answer is never given.
     Awaited: the response carries the NEW state so the coaching message renders
     immediately without polling."""
     await _ensure_session(session_id)

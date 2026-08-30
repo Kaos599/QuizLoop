@@ -1,6 +1,6 @@
 # 📚 QuizLoop Documentation Hub
 
-Welcome to the comprehensive technical documentation for **QuizLoop** — an interactive, human-in-the-loop AI-powered assessment and real-time simulation learning platform.
+Welcome to the comprehensive technical documentation for **QuizLoop** - an interactive, human-in-the-loop AI-powered assessment and real-time simulation learning platform.
 
 ---
 

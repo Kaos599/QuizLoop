@@ -73,7 +73,7 @@ async def test_pipeline():
     for r in runs:
         logger.info(f"  - Run ID: {r.id} | Name: {r.name} | Type: {r.run_type} | Status: {r.status} | Latency: {r.latency}s")
         logger.info(f"    Trace link: https://smith.langchain.com/projects/p/{target_project}?r={r.id}")
-    assert len(runs) >= 1, "No runs found in LangSmith — tracing is not wired up!"
+    assert len(runs) >= 1, "No runs found in LangSmith - tracing is not wired up!"
 
     logger.info("\n" + "=" * 60)
     logger.info("✅ ALL LOGGING & LANGSMITH VERIFICATION CHECKS PASSED!")

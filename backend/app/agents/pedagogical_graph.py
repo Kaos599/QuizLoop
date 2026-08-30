@@ -1,5 +1,5 @@
 """
-SkillForge Pedagogical Graph (v2) — LangGraph 1.x Human-in-the-Loop pipeline.
+SkillForge Pedagogical Graph (v2) - LangGraph 1.x Human-in-the-Loop pipeline.
 
 Flow:
   START -> plan_node -> plan_review_node(interrupt) -> generate_mcq_node
@@ -12,7 +12,7 @@ Grounding notes (LangGraph 1.x):
     {"configurable": {"thread_id": session_id}, "metadata": {"session_id": ...}}
   * Command(resume=...) is the only way to resume; nodes restart from the top,
     so revision counters live in ONE place (plan_review_node) and every route
-    is an explicit Command(goto=...) — a bare Command(update=...) would end the run.
+    is an explicit Command(goto=...) - a bare Command(update=...) would end the run.
   * Side effects before interrupt() must be idempotent (upserts / ON CONFLICT).
   * The plan-approval HITL is a refinement loop: rejection feeds back into
     regeneration; empty feedback produces a clarifying question; after the
@@ -129,7 +129,7 @@ def _public_objective(obj: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _public_mcq(mcq: Dict[str, Any]) -> Dict[str, Any]:
-    """Question text + option texts only — never answer data."""
+    """Question text + option texts only - never answer data."""
     return {
         "scenario": mcq.get("scenario", ""),
         "question": mcq.get("question", ""),
@@ -163,7 +163,7 @@ def _db_mcq(mcq: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _public_last_result(result: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
-    """Feedback the client may see — explanations/hints only, never the answer."""
+    """Feedback the client may see - explanations/hints only, never the answer."""
     if not result:
         return None
     return {
@@ -178,7 +178,7 @@ def _public_last_result(result: Optional[Dict[str, Any]]) -> Optional[Dict[str, 
 
 
 def serialize_public_state(state: Dict[str, Any]) -> Dict[str, Any]:
-    """Snapshot for the frontend — never leaks correct answers."""
+    """Snapshot for the frontend - never leaks correct answers."""
     plan = state.get("plan") or []
     slots = state.get("slots") or []
     mcq = state.get("current_mcq")
@@ -219,7 +219,7 @@ def serialize_public_state(state: Dict[str, Any]) -> Dict[str, Any]:
 
 
 async def _sync_state_to_db(state: Dict[str, Any]) -> None:
-    """Idempotent snapshot (upserts only — safe when nodes re-run on resume)."""
+    """Idempotent snapshot (upserts only - safe when nodes re-run on resume)."""
     session_id = state.get("session_id")
     if not session_id:
         return
@@ -565,7 +565,7 @@ async def plan_node(state: PedagogicalState) -> Dict[str, Any]:
 
 def plan_review_node(state: PedagogicalState) -> Command:
     """The approval interrupt. All rejection routing happens here (revision++) and
-    every branch returns an explicit Command(goto=...) — never a bare update."""
+    every branch returns an explicit Command(goto=...) - never a bare update."""
     cfg = state.get("quiz_config") or DEFAULT_QUIZ_CONFIG
     revision = state.get("revision", 0)
     cap_reached = state.get("plan_cap_reached", False)
@@ -618,7 +618,7 @@ def plan_review_node(state: PedagogicalState) -> Command:
 
     if new_revision > MAX_PLAN_REVISIONS or cap_reached:
         if cap_reached:
-            logger.info("Plan cap reached with rejection — starting with simplified plan")
+            logger.info("Plan cap reached with rejection - starting with simplified plan")
             plan = state.get("plan") or []
             slots = _build_slots(plan)
             return Command(
@@ -677,8 +677,8 @@ def plan_clarify_node(state: PedagogicalState) -> Command:
         "plan": [_public_objective(o) for o in plan],
         "prompt": "This revision was rejected without feedback. What direction should the planner take?",
         "options": [
-            "Simplify it — fewer objectives, more focus",
-            "Go deeper — more questions on the hard parts",
+            "Simplify it - fewer objectives, more focus",
+            "Go deeper - more questions on the hard parts",
             "Change the difficulty level",
             "Restructure the order of the objectives",
             "Start over with a fresh structure",
@@ -713,7 +713,7 @@ async def simplify_plan_node(state: PedagogicalState) -> Dict[str, Any]:
     instruction = (
         "The student rejected several proposals for a learning plan from this document. "
         "We need a pragmatic, compact version they are most likely to accept.\n"
-        "Rules: exactly 3 objectives, each worth 1 question is NOT allowed — distribute "
+        "Rules: exactly 3 objectives, each worth 1 question is NOT allowed - distribute "
         f"the {total_questions} questions sensibly, at least 1 per objective. Each objective "
         "must be self-contained. Prefer broad, useful topics over exhaustive coverage.\n"
         f"Student's recurring feedback: '''{feedback or 'Too complex; wants something focused.'}'''"
@@ -760,7 +760,7 @@ async def _generate_mcq_deck(
     """One LLM call that produces a complete MCQ deck aligned to the given slots.
 
     This is the ONLY generation path for quiz questions. Individual
-    per-question LLM calls are never used — the deck is pre-generated once
+    per-question LLM calls are never used - the deck is pre-generated once
     (at plan approval) and the rest of the session pops from it instantly.
     """
     total_questions = len(slots)
@@ -901,7 +901,7 @@ async def generate_mcq_node(state: PedagogicalState) -> Command:
         )
 
     # 2. Resilient fallback: the deck is missing/truncated (e.g. restored
-    # session after a restart). Regenerate the REMAINING deck in ONE call —
+    # session after a restart). Regenerate the REMAINING deck in ONE call  - 
     # never a per-question LLM call.
     if not mcq:
         logger.info(
@@ -1015,7 +1015,7 @@ async def teach_more_node(state: PedagogicalState) -> Command:
         "You are a patient study coach inside an assessment. The student asked "
         f"'''{user_question}''' while answering the question above.\n"
         "Teach the underlying concept with a short intuitive primer and 1-2 guiding "
-        "questions — without revealing which option is correct, without quoting option "
+        "questions - without revealing which option is correct, without quoting option "
         "text as the answer, and without naming a letter. End by nudging them to re-examine "
         "the options now that they understand the mechanism."
     )
@@ -1306,7 +1306,7 @@ async def resume_pedagogical_pipeline(session_id: str, payload: dict, strict: bo
     except Exception as e:
         if strict:
             raise
-        # e.g. resume raced with the graph already having moved on —
+        # e.g. resume raced with the graph already having moved on  - 
         # a no-op for interaction purposes, log it and stay healthy.
         logger.info(f"Resume no-op for {session_id}: {type(e).__name__}: {e}")
         return False

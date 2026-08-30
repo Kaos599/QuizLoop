@@ -1,5 +1,5 @@
 """
-Learning API route behavior tests (TDD) — approve-plan / learn-more contracts.
+Learning API route behavior tests (TDD) - approve-plan / learn-more contracts.
 
 Covers the user-facing flow fixes:
   * approve-plan (adjust/approve) AWAITS the pipeline and returns the new state
@@ -211,7 +211,7 @@ async def test_approve_plan_approve_returns_quiz_state(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_approve_plan_failure_returns_502(monkeypatch):
-    """A failed re-draft must surface as an error — never a silent stale plan."""
+    """A failed re-draft must surface as an error - never a silent stale plan."""
     session_id = "route-fail"
     calls, _ = await _boot_session(monkeypatch, session_id, plan_fail=True)
 

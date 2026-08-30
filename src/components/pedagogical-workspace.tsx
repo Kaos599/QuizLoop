@@ -251,7 +251,7 @@ export function PedagogicalWorkspace({ sessionId }: PedagogicalWorkspaceProps) {
           setState(next);
         }
       } catch {
-        // transient parse error — ignore
+        // transient parse error - ignore
       }
     } catch (error) {
       console.error("Failed to fetch state", error);

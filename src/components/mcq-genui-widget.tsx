@@ -62,7 +62,7 @@ export function MCQGenUIWidget({
   const [learnQuestion, setLearnQuestion] = useState("");
   const [learnBusy, setLearnBusy] = useState(false);
   // Next question is returned inline with the submit verdict (pre-generated
-  // deck) — "Next question" adopts it locally with zero network round-trip.
+  // deck) - "Next question" adopts it locally with zero network round-trip.
   const [pendingNext, setPendingNext] = useState<MCQItem | null>(null);
   // State (not a ref) so clicking "Next question" always re-renders and the
   // adopt effect can run, even if the parent payload hasn't changed.
@@ -146,7 +146,7 @@ export function MCQGenUIWidget({
       }
       setHintVisible(true);
     } catch {
-      /* hint pull failed — fall back to whatever copy we have */
+      /* hint pull failed - fall back to whatever copy we have */
       if (shown.hint) setHintText(shown.hint);
       setHintVisible(true);
     }
@@ -199,7 +199,7 @@ export function MCQGenUIWidget({
   }, [verdict, selectedId, shown.options, isBusy, learnOpen]);
 
   const handleNext = () => {
-    // Fast path: the next question came back inside the submit response —
+    // Fast path: the next question came back inside the submit response  - 
     // adopt it locally, no fetch, no poll, no waiting.
     if (pendingNext && pendingNext.question !== shown.question) {
       adoptQuestion(pendingNext);
@@ -367,7 +367,7 @@ export function MCQGenUIWidget({
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-2">
                 <BookOpen className="w-3.5 h-3.5 text-teal-600" />
-                Ask the coach (no spoilers — it never reveals the answer)
+                Ask the coach (no spoilers - it never reveals the answer)
               </span>
               <button
                 onClick={() => setLearnOpen(false)}
@@ -440,7 +440,7 @@ export function MCQGenUIWidget({
                 <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center">
                   <CheckCircle2 className="w-4 h-4" />
                 </div>
-                <span>Correct — well reasoned!</span>
+                <span>Correct - well reasoned!</span>
               </div>
               {feedback?.explanation && (
                 <p className="text-xs sm:text-sm text-emerald-900/90 leading-relaxed">
@@ -480,7 +480,7 @@ export function MCQGenUIWidget({
             >
               <div className="flex items-center gap-2.5">
                 <XCircle className="w-5 h-5 text-rose-600 shrink-0" />
-                <span className="text-sm font-bold">Not quite — try again, no penalty.</span>
+                <span className="text-sm font-bold">Not quite - try again, no penalty.</span>
               </div>
               <p className="mt-2 text-xs sm:text-sm text-rose-900/85 leading-relaxed">
                 {feedback?.diagnosticFeedback || "Re-examine the premise and the core mechanism behind the options."}
@@ -501,7 +501,7 @@ export function MCQGenUIWidget({
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
               <span className="text-[11px] text-slate-400 hidden sm:inline">
-                Pick another option above, then submit again — or press <kbd className="px-1.5 py-0.5 rounded bg-slate-100 border text-slate-600">R</kbd> to reset
+                Pick another option above, then submit again - or press <kbd className="px-1.5 py-0.5 rounded bg-slate-100 border text-slate-600">R</kbd> to reset
               </span>
               <Button
                 onClick={handleRetry}

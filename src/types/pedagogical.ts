@@ -141,7 +141,7 @@ export interface SubmitAnswerResponse {
   hint?: string;
   keyTakeaway?: string;
   key_takeaway?: string;
-  /** The next pre-generated question, returned directly with the verdict —
+  /** The next pre-generated question, returned directly with the verdict  - 
    *  the frontend never polls for it. Present only when the answer was
    *  correct and the deck has more questions. */
   nextMCQ?: MCQItem;
