@@ -63,7 +63,7 @@ export default function Home() {
         
         {/* Hero Section */}
         <section className="w-full relative pt-14 pb-12 sm:pt-20 sm:pb-16 px-4 sm:px-6 text-center overflow-hidden border-b border-slate-100 bg-gradient-to-b from-slate-50/50 to-white">
-          <div className="absolute inset-0 bg-quizloop-dots pointer-events-none opacity-40" />
+          <div className="absolute inset-0 bg-memorang-dots pointer-events-none opacity-40" />
           
           <div className="relative max-w-4xl mx-auto space-y-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-teal-50 text-teal-800 border border-teal-200">
@@ -113,7 +113,7 @@ export default function Home() {
                 </div>
                 <div className="h-4 w-px bg-slate-200" />
                 <span className="text-xs font-semibold text-slate-700">
-                  QuizLoop Studio / New Study Session
+                  Memorang Studio / New Study Session
                 </span>
               </div>
 
@@ -206,7 +206,7 @@ export default function Home() {
                   <span>Secure Processing · Your progress is always saved · Your data stays private</span>
                 </div>
                 <div className="text-[11px] font-semibold text-slate-400">
-                  QuizLoop AI
+                  Memorang AI
                 </div>
               </div>
 

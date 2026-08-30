@@ -19,8 +19,8 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "QuizLoop - The AI Stack for Education & Interactive Learning",
-  description: "Transform any document into adaptive assessments and interactive learning experiences with QuizLoop's AI-powered platform.",
+  title: "Memorang - The AI Stack for Education & Interactive Learning",
+  description: "Transform any document into adaptive assessments and interactive learning experiences with Memorang's AI-powered platform.",
   icons: {
     icon: "/logo.png",
   },
