@@ -3,7 +3,7 @@ import json
 import logging
 from typing import Dict, Set, Optional
 
-logger = logging.getLogger("skillforge.stream_hub")
+logger = logging.getLogger("quizloop.stream_hub")
 
 class SessionStreamHub:
     def __init__(self):

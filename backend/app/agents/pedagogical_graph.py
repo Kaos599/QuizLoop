@@ -1,5 +1,5 @@
 """
-SkillForge Pedagogical Graph (v2) - LangGraph 1.x Human-in-the-Loop pipeline.
+QuizLoop Pedagogical Graph (v2) - LangGraph 1.x Human-in-the-Loop pipeline.
 
 Flow:
   START -> plan_node -> plan_review_node(interrupt) -> generate_mcq_node
@@ -33,8 +33,8 @@ from app.agents.gemini_client import generate_gemini_content
 from app.services.gemini_file_service import get_gemini_part_for_file
 from app.db import execute, query_row
 
-logger = logging.getLogger("skillforge.pedagogical")
-flow_logger = logging.getLogger("skillforge.prompts_and_flows")
+logger = logging.getLogger("quizloop.pedagogical")
+flow_logger = logging.getLogger("quizloop.prompts_and_flows")
 
 MAX_PLAN_REVISIONS = 3  # LLM re-plans allowed before simplified fallback
 DEFAULT_QUIZ_CONFIG = {
@@ -1250,7 +1250,7 @@ def _thread_config(session_id: str) -> dict:
     return {
         "configurable": {"thread_id": session_id},
         "metadata": {"session_id": session_id, "flow": "pedagogical"},
-        "tags": ["skillforge", "pedagogical"],
+        "tags": ["quizloop", "pedagogical"],
     }
 
 

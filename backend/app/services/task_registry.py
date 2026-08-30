@@ -12,7 +12,7 @@ import time
 import uuid
 from typing import Any, Dict, Optional
 
-logger = logging.getLogger("skillforge.task_registry")
+logger = logging.getLogger("quizloop.task_registry")
 
 MAX_TASKS = 200
 

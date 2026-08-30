@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, status
 from app.schemas.quiz import QuestionResponse, QuestionItem
 from app.db import query, query_row
 
-logger = logging.getLogger("skillforge.routes.questions")
+logger = logging.getLogger("quizloop.routes.questions")
 router = APIRouter(prefix="/api", tags=["questions"])
 
 @router.get("/questions/{session_id}", response_model=QuestionResponse)

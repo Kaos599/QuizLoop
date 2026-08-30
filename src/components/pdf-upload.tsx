@@ -262,7 +262,7 @@ const onDrop = (e: React.DragEvent) => {
               <div className="space-y-1.5 text-center">
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-teal-50 text-teal-700 border border-teal-200">
                   <Sparkles className="w-3 h-3 text-teal-600 animate-spin" />
-                  Memorang AI
+                  QuizLoop AI
                 </span>
                 <h4 className="text-sm font-bold text-slate-900 truncate">
                   {selectedFileName || "Processing Document..."}

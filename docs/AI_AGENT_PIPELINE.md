@@ -45,14 +45,14 @@ stateDiagram-v2
 
 ## 2. Pipeline Stages & Node Breakdown
 
-### Stage 0: Dynamic Context Cache Manager ([`cache_manager.py`](file:///g:/Stuff/Study/Programs/SkillForge-Interactive-AI-Quiz-Assessment-Platform/backend/app/services/cache_manager.py))
+### Stage 0: Dynamic Context Cache Manager ([`cache_manager.py`](file:///g:/Stuff/Study/Programs/QuizLoop-Interactive-AI-Quiz-Assessment-Platform/backend/app/services/cache_manager.py))
 - **Trigger**: Document size $\ge 10,000$ tokens.
 - **Action**: Provisions an explicit `cachedContents` object via `client.caches.create` with a 10-minute TTL (`600s`).
 - **Benefit**: Reused across Master Planner and 3 parallel Question Planner passes, cutting prompt token costs by **$75\%$**.
 
 ---
 
-### Stage 1: Master Planner Node ([`master_planner.py`](file:///g:/Stuff/Study/Programs/SkillForge-Interactive-AI-Quiz-Assessment-Platform/backend/app/agents/interactive_graph/nodes/master_planner.py))
+### Stage 1: Master Planner Node ([`master_planner.py`](file:///g:/Stuff/Study/Programs/QuizLoop-Interactive-AI-Quiz-Assessment-Platform/backend/app/agents/interactive_graph/nodes/master_planner.py))
 - **Role**: Educational curriculum architect.
 - **Model**: `gemini-3.7-flash` with `thinking_budget=4096` (High Thinking) and **Selective Google Search Grounding**.
 - **Prompt Objective**: Analyze the technical document and extract 3 to 5 physical, mathematical, or visual simulation playgrounds where students manipulate variables to observe dynamic system feedback.
@@ -60,7 +60,7 @@ stateDiagram-v2
 
 ---
 
-### Stage 2: Question Planner Node ([`question_planner.py`](file:///g:/Stuff/Study/Programs/SkillForge-Interactive-AI-Quiz-Assessment-Platform/backend/app/agents/interactive_graph/nodes/question_planner.py))
+### Stage 2: Question Planner Node ([`question_planner.py`](file:///g:/Stuff/Study/Programs/QuizLoop-Interactive-AI-Quiz-Assessment-Platform/backend/app/agents/interactive_graph/nodes/question_planner.py))
 - **Role**: Virtual lab experiment designer.
 - **Model**: `gemini-3.7-flash` with `thinking_budget=2048` (Medium Thinking).
 - **Parallelism**: Executes parallel sub-tasks across all master plan lessons using `asyncio.gather`.
@@ -69,7 +69,7 @@ stateDiagram-v2
 
 ---
 
-### Stage 3: Coder Node ([`coder.py`](file:///g:/Stuff/Study/Programs/SkillForge-Interactive-AI-Quiz-Assessment-Platform/backend/app/agents/interactive_graph/nodes/coder.py))
+### Stage 3: Coder Node ([`coder.py`](file:///g:/Stuff/Study/Programs/QuizLoop-Interactive-AI-Quiz-Assessment-Platform/backend/app/agents/interactive_graph/nodes/coder.py))
 - **Role**: React simulation engineer.
 - **Model**: `gemini-3.7-flash` with `thinking_budget=1024` (Low Thinking to maximize the 16,384 output token budget).
 - **Strict UI Contract**:
@@ -81,7 +81,7 @@ stateDiagram-v2
 
 ---
 
-### Stage 4: Verifier Node & Tree-Sitter AST Engine ([`verifier.py`](file:///g:/Stuff/Study/Programs/SkillForge-Interactive-AI-Quiz-Assessment-Platform/backend/app/agents/interactive_graph/nodes/verifier.py))
+### Stage 4: Verifier Node & Tree-Sitter AST Engine ([`verifier.py`](file:///g:/Stuff/Study/Programs/QuizLoop-Interactive-AI-Quiz-Assessment-Platform/backend/app/agents/interactive_graph/nodes/verifier.py))
 - **Role**: Static code analysis and contract auditor.
 - **Mechanism**: Parses generated JSX using native C bindings in `tree-sitter-javascript` inside a worker thread (`asyncio.to_thread`) to prevent event-loop blocking.
 - **Audits**:

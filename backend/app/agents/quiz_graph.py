@@ -8,8 +8,8 @@ from app.services.gemini_file_service import get_gemini_part_for_file
 from app.db import execute, query
 from google.genai import types
 
-logger = logging.getLogger("skillforge.quiz_graph")
-flow_logger = logging.getLogger("skillforge.prompts_and_flows")
+logger = logging.getLogger("quizloop.quiz_graph")
+flow_logger = logging.getLogger("quizloop.prompts_and_flows")
 
 class QuestionSchema(BaseModel):
     concept_title: str = Field(description="Short, crisp topic badge e.g. 'Unsupervised Pre-training', 'Catastrophic Forgetting', 'Attention Dynamics'")
@@ -31,7 +31,7 @@ class QuizAgentState(TypedDict):
     error: Optional[str]
 
 QUIZ_GENERATOR_SYSTEM_INSTRUCTION = """
-You are a world-class Academic Mentor, Cognitive Pedagogist, and Assessment Architect for SkillForge.
+You are a world-class Academic Mentor, Cognitive Pedagogist, and Assessment Architect for QuizLoop.
 Your mission is to transform a static technical document into 4 to 8 high-yield, deeply educational multiple-choice mastery questions.
 
 ================================================================================

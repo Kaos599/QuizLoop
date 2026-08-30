@@ -4,7 +4,7 @@ import httpx
 from typing import Optional
 from app.config import settings
 
-logger = logging.getLogger("skillforge.supabase")
+logger = logging.getLogger("quizloop.supabase")
 
 def _get_auth_headers() -> dict:
     key = settings.supabase_service_role_key

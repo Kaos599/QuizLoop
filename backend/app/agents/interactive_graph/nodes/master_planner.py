@@ -8,7 +8,7 @@ from app.agents.gemini_client import generate_gemini_content
 from app.services.gemini_file_service import get_gemini_part_for_file
 from app.agents.interactive_graph.state import InteractiveAgentState, AgentPhase
 
-logger = logging.getLogger("skillforge.master_planner")
+logger = logging.getLogger("quizloop.master_planner")
 
 # ==============================================================================
 # PYDANTIC SCHEMAS FOR UNIFIED CURRICULUM PLANNING
@@ -67,7 +67,7 @@ class MasterPlanSchema(BaseModel):
 # ==============================================================================
 
 MASTER_PLANNER_SYSTEM_INSTRUCTION = """
-You are the Principal Simulation Architect and Chief Pedagogical Engineer for SkillForge.
+You are the Principal Simulation Architect and Chief Pedagogical Engineer for QuizLoop.
 Your mission is to transform static technical, scientific, financial, or engineering documents into a unified curriculum of 3 to 5 "Interactive Simulation Playgrounds".
 
 ================================================================================

@@ -22,12 +22,12 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col text-slate-900 selection:bg-[#0D8267] selection:text-white">
-      {/* Top Header - Memorang Assessment Submission */}
+      {/* Top Header - QuizLoop Assessment Submission */}
       <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-slate-100">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-18 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center">
-              <img src="/logo.png" alt="Memorang" className="h-8 sm:h-9 w-auto" />
+              <img src="/logo.png" alt="QuizLoop" className="h-8 sm:h-9 w-auto" />
             </Link>
             <div className="h-5 w-px bg-slate-200 hidden sm:block" />
             <span className="text-xs font-semibold text-slate-600 hidden sm:inline">
@@ -63,7 +63,7 @@ export default function Home() {
         
         {/* Hero Section */}
         <section className="w-full relative pt-14 pb-12 sm:pt-20 sm:pb-16 px-4 sm:px-6 text-center overflow-hidden border-b border-slate-100 bg-gradient-to-b from-slate-50/50 to-white">
-          <div className="absolute inset-0 bg-memorang-dots pointer-events-none opacity-40" />
+          <div className="absolute inset-0 bg-quizloop-dots pointer-events-none opacity-40" />
           
           <div className="relative max-w-4xl mx-auto space-y-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-teal-50 text-teal-800 border border-teal-200">
@@ -113,7 +113,7 @@ export default function Home() {
                 </div>
                 <div className="h-4 w-px bg-slate-200" />
                 <span className="text-xs font-semibold text-slate-700">
-                  Memorang Studio / New Study Session
+                  QuizLoop Studio / New Study Session
                 </span>
               </div>
 
@@ -206,7 +206,7 @@ export default function Home() {
                   <span>Secure Processing · Your progress is always saved · Your data stays private</span>
                 </div>
                 <div className="text-[11px] font-semibold text-slate-400">
-                  Memorang AI
+                  QuizLoop AI
                 </div>
               </div>
 
@@ -291,10 +291,10 @@ export default function Home() {
       <footer className="w-full border-t border-slate-200 bg-white py-12 px-6 sm:px-12 text-slate-600 text-xs sm:text-sm">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-4">
-            <img src="/logo.png" alt="Memorang" className="h-8 w-auto" />
+            <img src="/logo.png" alt="QuizLoop" className="h-8 w-auto" />
             <div className="h-5 w-px bg-slate-200 hidden sm:block" />
             <span className="text-slate-500 text-xs sm:text-sm">
-              Built for Memorang Technical Assessment Evaluation
+              Built for QuizLoop Technical Assessment Evaluation
             </span>
           </div>
 

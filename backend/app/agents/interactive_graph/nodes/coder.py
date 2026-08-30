@@ -7,14 +7,14 @@ from google.genai import types
 from app.agents.gemini_client import generate_gemini_content
 from app.agents.interactive_graph.state import InteractiveAgentState, AgentPhase, GeneratedCode, DetailedQuestionPlan
 
-logger = logging.getLogger("skillforge.coder_node")
+logger = logging.getLogger("quizloop.coder_node")
 
 class CodeGenerationSchema(BaseModel):
     app_js: str = Field(description="The complete, working single-file React JavaScript/JSX code for /App.js including function App() and renderComponent(App)")
     dependencies: dict[str, str] = Field(default_factory=lambda: {"framer-motion": "latest", "lucide-react": "latest"})
 
 CODER_SYSTEM_INSTRUCTION = """
-You are a world-class Simulation Engineer, Creative Computational Designer, and React Developer for SkillForge.
+You are a world-class Simulation Engineer, Creative Computational Designer, and React Developer for QuizLoop.
 Build an authentic, engaging, and rich single-file interactive React simulation (App.js) that makes abstract scientific, mathematical, physical, and computational systems come alive visually.
 
 ================================================================================

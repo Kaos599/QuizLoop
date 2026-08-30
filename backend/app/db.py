@@ -4,7 +4,7 @@ from typing import Any, Optional
 from contextlib import asynccontextmanager
 from app.config import settings
 
-logger = logging.getLogger("skillforge.db")
+logger = logging.getLogger("quizloop.db")
 
 _pool: Optional[asyncpg.Pool] = None
 

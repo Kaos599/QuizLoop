@@ -9,7 +9,7 @@ from app.config import settings
 from app.services.supabase_storage import download_pdf_from_supabase
 from app.agents.gemini_client import get_client as get_gemini_client
 
-logger = logging.getLogger("skillforge.gemini_file")
+logger = logging.getLogger("quizloop.gemini_file")
 
 async def upload_file_to_gemini(file_path: str, mime_type: str = "application/pdf") -> str:
     """

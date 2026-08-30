@@ -44,8 +44,8 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Memorang Teal Dot Matrix Pattern */
-.bg-memorang-dots {
+/* QuizLoop Teal Dot Matrix Pattern */
+.bg-quizloop-dots {
   background-image: radial-gradient(rgba(13, 130, 103, 0.18) 1.5px, transparent 1.5px);
   background-size: 28px 28px;
 }

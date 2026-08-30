@@ -44,7 +44,7 @@ async def test_pipeline():
     logger.info(f"✓ Gemini Response: {response.strip()}")
 
     # 3. Verify Local Log Files Exist and Contain Data
-    app_log = os.path.join(LOGS_DIR, "skillforge.log")
+    app_log = os.path.join(LOGS_DIR, "quizloop.log")
     flows_log = os.path.join(LOGS_DIR, "prompts_and_flows.log")
 
     logger.info("3. Checking local log files...")

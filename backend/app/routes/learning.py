@@ -26,7 +26,7 @@ from app.schemas.pedagogical import (
 from app.services.task_registry import task_registry
 from app.db import query_row
 
-logger = logging.getLogger("skillforge.api.learning")
+logger = logging.getLogger("quizloop.api.learning")
 router = APIRouter(prefix="/api/learning", tags=["Learning"])
 
 

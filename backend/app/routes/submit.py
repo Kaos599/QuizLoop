@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, status
 from app.schemas.quiz import SubmitRequest, SubmitResponse
 from app.db import query_row, execute
 
-logger = logging.getLogger("skillforge.routes.submit")
+logger = logging.getLogger("quizloop.routes.submit")
 router = APIRouter(prefix="/api", tags=["submit"])
 
 @router.post("/submit", response_model=SubmitResponse)

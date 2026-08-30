@@ -11,7 +11,7 @@
 
 ## 2. Environment Variables Configuration
 
-Create a `.env` file in the root of the project by copying from [`.env.example`](file:///g:/Stuff/Study/Programs/SkillForge-Interactive-AI-Quiz-Assessment-Platform/.env.example):
+Create a `.env` file in the root of the project by copying from [`.env.example`](file:///g:/Stuff/Study/Programs/QuizLoop-Interactive-AI-Quiz-Assessment-Platform/.env.example):
 
 ```bash
 cp .env.example .env
@@ -51,7 +51,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 ### Terminal 1: Setup & Run Python FastAPI Backend
 ```bash
 # 1. Navigate to repository root
-cd /path/to/SkillForge-Interactive-AI-Quiz-Assessment-Platform
+cd /path/to/QuizLoop-Interactive-AI-Quiz-Assessment-Platform
 
 # 2. Create virtual environment and install dependencies
 python -m venv backend/.venv
