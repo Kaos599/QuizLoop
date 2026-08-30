@@ -1,4 +1,4 @@
-# 🚀 Getting Started & Operations Guide
+# Getting Started and Operations Guide
 
 ## 1. Prerequisites
 

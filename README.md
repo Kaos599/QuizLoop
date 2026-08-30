@@ -1,10 +1,10 @@
-# 🔄 QuizLoop
+# QuizLoop
 
 <div align="center">
 
-### **Human-In-The-Loop AI Quiz & Pedagogical Assessment Engine**
+### Human-In-The-Loop AI Quiz and Pedagogical Assessment Engine
 
-Transform raw technical documents, textbooks, and research papers into rigorous quizzes, human-in-the-loop verified curricula, and real-time interactive simulation sandboxes.
+Transform technical documents, textbooks, and research publications into structured assessments, human-curated curricula, and real-time interactive simulation sandboxes.
 
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-black?style=flat&logo=next.js)](https://nextjs.org/)
 [![React 19](https://img.shields.io/badge/React-19-61DAFB?style=flat&logo=react)](https://react.dev/)
@@ -14,52 +14,52 @@ Transform raw technical documents, textbooks, and research papers into rigorous 
 [![LangGraph](https://img.shields.io/badge/LangGraph-Python-FF6F00?style=flat)](https://github.com/langchain-ai/langgraph)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-336791?style=flat&logo=postgresql)](https://www.postgresql.org/)
 
-[Features](#-key-features) • [Architecture](#-system-architecture) • [Getting Started](#-quick-start) • [Documentation](#-documentation)
+[Key Features](#key-features) • [System Architecture](#system-architecture) • [Quick Start](#quick-start) • [Documentation Hub](#documentation-hub) • [Testing](#testing)
 
 ---
 
 </div>
 
-## 🌟 Key Features
+## Key Features
 
-- 📄 **Document-to-Assessment Ingestion**: Upload dense research papers, syllabi, or lecture PDFs ($\le 25\text{MB}$) with automatic token-aware context caching.
-- 🧑‍🏫 **Human-in-the-Loop (HITL) Curriculum Approval**: The AI Master Planner proposes a structured pedagogical lesson plan; educators and students can inspect, customize, request adjustments, or approve before generation begins.
-- 🧪 **Interactive Simulation Playgrounds**: Generates single-file dynamic React simulations (`App.js`) featuring real-time sliders, physics engines, and canvas visualizations with goal-threshold verification.
-- 🛡️ **Tree-sitter AST & Self-Healing Reflection**: Native C bindings inspect generated React code for syntax integrity and module whitelists, triggering automated corrective retries before reaching the student.
-- 📊 **Dynamic Mastery Reporting**: Generates Bloom's taxonomy analytics, mastery gauges, weak-spot diagnostics, and personalized reinforcement plans.
-- ⚡ **Low-Latency Streaming**: Asynchronous event streams (SSE) deliver instant phase-by-phase updates and live feedback.
+- **Document-to-Assessment Ingestion**: Ingest dense research papers, syllabi, or lecture PDFs ($\le 25\text{MB}$) with automatic token-aware context caching.
+- **Human-in-the-Loop (HITL) Curriculum Approval**: The AI Master Planner drafts a structured pedagogical lesson plan; educators and students can inspect, customize, request adjustments, or approve before generation begins.
+- **Interactive Simulation Playgrounds**: Generates single-file dynamic React simulations (`App.js`) featuring real-time parameter controls, physics calculations, and canvas visualizations with goal-threshold verification.
+- **Tree-sitter AST and Self-Healing Reflection**: Native C bindings inspect generated React code for syntax integrity and module whitelists, triggering automated corrective retries before reaching the client runtime.
+- **Dynamic Mastery Reporting**: Generates Bloom's taxonomy analytics, mastery score distributions, weak-spot diagnostics, and personalized reinforcement recommendations.
+- **Low-Latency Streaming**: Asynchronous Server-Sent Events (SSE) deliver instant phase-by-phase status transitions and live feedback.
 
 ---
 
-## 🏛️ System Architecture
+## System Architecture
 
 ```mermaid
 flowchart TD
     subgraph Client ["Client Tier (Next.js 16 + React 19)"]
-        UploadUI["PDF Uploader & File Validator"]
+        UploadUI["PDF Uploader and File Validator"]
         HITL["Plan Approval Card (Human-in-the-Loop)"]
-        QuizUI["Adaptive MCQ & Socratic Hint Widget"]
+        QuizUI["Adaptive MCQ and Socratic Hint Widget"]
         SandboxUI["LivePreview Interactive Sandbox"]
-        MasteryUI["Mastery Analytics & Radar Report"]
+        MasteryUI["Mastery Analytics and Radar Report"]
     end
 
     subgraph Backend ["API Tier (FastAPI + Asyncpg)"]
-        UploadAPI["/api/upload & /api/learning"]
-        StreamAPI["SSE Status Streams & Task Registry"]
-        SubmissionAPI["/api/submit & /api/interactive/goal-complete"]
+        UploadAPI["/api/upload and /api/learning"]
+        StreamAPI["SSE Status Streams and Task Registry"]
+        SubmissionAPI["/api/submit and /api/interactive/goal-complete"]
     end
 
     subgraph MultiAgent ["Multi-Agent Tier (LangGraph + Gemini 3.7)"]
         MasterPlan["1. Master Planner\n(Curriculum Design + Search Grounding)"]
         QuestionPlan["2. Question Planner\n(Parallel Fan-Out)"]
         Coder["3. Coder Agent\n(Dynamic Sandbox Synthesis)"]
-        Verifier["4. Tree-Sitter Verifier\n(AST Integrity & Reflection Loop)"]
+        Verifier["4. Tree-Sitter Verifier\n(AST Integrity and Reflection Loop)"]
     end
 
-    subgraph Persistence ["Persistence & Observability"]
+    subgraph Persistence ["Persistence and Observability"]
         Postgres[("PostgreSQL Database\n(Sessions, MCQs, Mastery Reports)")]
         SupabaseStorage[("Supabase Storage\n(PDF Blobs)")]
-        LangSmith[("LangSmith\n(Agent Tracing & Observability)")]
+        LangSmith[("LangSmith\n(Agent Tracing and Observability)")]
     end
 
     UploadUI -->|Upload PDF| UploadAPI
@@ -78,10 +78,10 @@ flowchart TD
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
-- **Node.js** 20+ & **pnpm** (or npm/yarn)
+- **Node.js** 20+ and **pnpm** (or npm/yarn)
 - **Python** 3.12+ (Python 3.13 recommended)
 - **PostgreSQL** 15+ database instance
 - **Google Gemini API Key** (`gemini-3.7-flash`)
@@ -89,24 +89,26 @@ flowchart TD
 ### 1. Backend Setup
 
 ```bash
-# Navigate to backend
+# Navigate to backend directory
 cd backend
 
 # Create virtual environment
 python -m venv venv
-# On Windows:
+
+# Activate virtual environment
+# Windows:
 .\venv\Scripts\activate
-# On macOS/Linux:
+# macOS/Linux:
 source venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Configure environment
+# Configure environment variables
 cp .env.example .env
-# Edit .env with your GEMINI_API_KEY and DATABASE_URL
+# Edit .env with GEMINI_API_KEY and DATABASE_URL
 
-# Start FastAPI server
+# Start FastAPI service
 uvicorn app.main:app --reload --port 8000
 ```
 
@@ -116,7 +118,7 @@ uvicorn app.main:app --reload --port 8000
 # In the project root directory
 npm install
 
-# Run Next.js development server
+# Start Next.js development server
 npm run dev
 ```
 
@@ -124,33 +126,33 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## 🧭 Documentation Hub
+## Documentation Hub
 
-For in-depth guides and technical specifications, explore the [`docs/`](docs/) directory:
+Comprehensive architecture blueprints and technical references are located in the [`docs/`](docs/) directory:
 
-| Guide | Summary |
+| Document | Description |
 | :--- | :--- |
-| **[System Architecture](docs/ARCHITECTURE.md)** | Deep dive into client, backend, streaming, and execution sandbox models. |
+| **[System Architecture](docs/ARCHITECTURE.md)** | Deep dive into client, backend, streaming, and sandbox execution models. |
 | **[AI Agent Pipeline](docs/AI_AGENT_PIPELINE.md)** | LangGraph state machine, AST validation, dynamic thinking budgets, and reflection loops. |
 | **[API Reference](docs/API_REFERENCE.md)** | Complete REST and Server-Sent Event (SSE) endpoint contracts. |
 | **[Database Schema](docs/DATABASE_SCHEMA.md)** | PostgreSQL relational DDL, constraints, composite indexes, and data integrity. |
-| **[Getting Started & Ops](docs/GETTING_STARTED.md)** | Environment variables, local testing, migrations, and operational guidelines. |
+| **[Getting Started and Operations](docs/GETTING_STARTED.md)** | Environment variables, local testing, migrations, and operational guidelines. |
 
 ---
 
-## 🧪 Testing
+## Testing
 
 ```bash
 # Run backend test suite
 cd backend
-pytest tests/ -v
+python -m pytest tests/ -v
 
-# Run API contract & validation tests
-pytest tests/test_api_contracts.py -v
+# Run API contract and validation tests
+python -m pytest tests/test_api_contracts.py -v
 ```
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License.

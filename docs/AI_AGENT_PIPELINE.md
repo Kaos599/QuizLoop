@@ -1,4 +1,4 @@
-# 🤖 Multi-Agent AI Pipeline & LangGraph Architecture
+# Multi-Agent AI Pipeline and LangGraph Architecture
 
 ## 1. Multi-Agent StateGraph Architecture
 

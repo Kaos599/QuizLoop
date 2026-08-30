@@ -1,4 +1,4 @@
-# 🔌 QuizLoop API Reference & Contract Specification
+# QuizLoop API Reference and Contract Specification
 
 The QuizLoop backend provides a fully asynchronous, type-safe REST and Server-Sent Events (SSE) API built with FastAPI on port `8000`.
 
