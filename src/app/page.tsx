@@ -22,12 +22,12 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col text-slate-900 selection:bg-[#0D8267] selection:text-white">
-      {/* Top Header - QuizLoop Assessment Submission */}
+      {/* Top Header - Memorang Assessment Submission */}
       <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-slate-100">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-18 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center">
-              <img src="/logo.png" alt="QuizLoop" className="h-8 sm:h-9 w-auto" />
+              <img src="/logo.png" alt="Memorang" className="h-8 sm:h-9 w-auto" />
             </Link>
             <div className="h-5 w-px bg-slate-200 hidden sm:block" />
             <span className="text-xs font-semibold text-slate-600 hidden sm:inline">
@@ -291,10 +291,10 @@ export default function Home() {
       <footer className="w-full border-t border-slate-200 bg-white py-12 px-6 sm:px-12 text-slate-600 text-xs sm:text-sm">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-4">
-            <img src="/logo.png" alt="QuizLoop" className="h-8 w-auto" />
+            <img src="/logo.png" alt="Memorang" className="h-8 w-auto" />
             <div className="h-5 w-px bg-slate-200 hidden sm:block" />
             <span className="text-slate-500 text-xs sm:text-sm">
-              Built for QuizLoop Technical Assessment Evaluation
+              Built for Memorang Technical Assessment Evaluation
             </span>
           </div>
 

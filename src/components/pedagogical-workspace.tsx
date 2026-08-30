@@ -446,7 +446,7 @@ export function PedagogicalWorkspace({ sessionId }: PedagogicalWorkspaceProps) {
           </Link>
           <div className="h-4 w-px bg-slate-200 hidden sm:block" />
           <Link href="/" prefetch={false} className="flex items-center">
-            <img src="/logo.png" alt="QuizLoop" className="h-7 w-auto" />
+            <img src="/logo.png" alt="Memorang" className="h-7 w-auto" />
           </Link>
           <div className="h-4 w-px bg-slate-200 hidden sm:block" />
           <div className="hidden md:flex items-center gap-1.5 text-xs text-slate-600 font-medium">
