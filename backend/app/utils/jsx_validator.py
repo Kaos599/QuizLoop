@@ -3,7 +3,7 @@ from typing import Tuple, List
 import tree_sitter_javascript as tsjs
 from tree_sitter import Language, Parser
 
-logger = logging.getLogger("skillforge.jsx_validator")
+logger = logging.getLogger("quizloop.jsx_validator")
 
 # Initialize tree-sitter JavaScript parser (supports JSX)
 _js_language = Language(tsjs.language())

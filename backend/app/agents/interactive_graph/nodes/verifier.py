@@ -4,7 +4,7 @@ from typing import List
 from app.utils.jsx_validator import validate_jsx_code
 from app.agents.interactive_graph.state import InteractiveAgentState, AgentPhase, VerificationResult
 
-logger = logging.getLogger("skillforge.verifier_node")
+logger = logging.getLogger("quizloop.verifier_node")
 
 def verify_codebases_sync(generated_code: list) -> List[VerificationResult]:
     results = []

@@ -1,25 +1,24 @@
-# 📚 SkillForge Documentation Hub
+# QuizLoop Documentation Hub
 
-Welcome to the comprehensive technical documentation for **SkillForge** — an enterprise-grade, interactive AI-powered quiz assessment and real-time scientific simulation learning platform.
+Welcome to the technical documentation for **QuizLoop** - the human-in-the-loop AI-powered assessment and pedagogical learning platform.
 
 ---
 
-## 🧭 Documentation Sitemap
+## Documentation Sitemap
 
 | Document | Description |
 | :--- | :--- |
-| **[System Architecture](ARCHITECTURE.md)** | Full architectural blueprints, component breakdown, distributed streaming engine, and frontend sandboxing model. |
-| **[Database Schema & Integrity](DATABASE_SCHEMA.md)** | PostgreSQL relational schema, DDL migrations, composite unique constraints, B-Tree indexes, and automated triggers. |
-| **[AI Agent Pipeline & LangGraph](AI_AGENT_PIPELINE.md)** | Multi-agent StateGraph design, dynamic thinking budgets, selective Google Search grounding, Tree-sitter AST validation, and self-healing reflection loop. |
-| **[API Reference](API_REFERENCE.md)** | Complete specification of all REST endpoints, SSE status streams, and `CamelModel` request/response contracts. |
-| **[File & Directory Map](FILE_STRUCTURE.md)** | Exhaustive index of all core backend and frontend files, services, agents, schemas, and components. |
-| **[Getting Started & Operations](GETTING_STARTED.md)** | Step-by-step installation, environment variables configuration, running locally, test suites, and troubleshooting. |
+| **[System Architecture](ARCHITECTURE.md)** | End-to-end architectural blueprints, client-backend integration, LangGraph state engine, and PostgreSQL persistence. |
+| **[AI Agent Pipeline](AI_AGENT_PIPELINE.md)** | LangGraph Pedagogical StateGraph, node specifications, HITL interrupt/resume mechanics, and revision rules. |
+| **[API Reference](API_REFERENCE.md)** | Complete specification of all REST endpoints, request/response models, and error behaviors. |
+| **[Database Schema and Integrity](DATABASE_SCHEMA.md)** | PostgreSQL relational schema, DDL migrations, session states, mastery report storage, and constraints. |
+| **[Getting Started and Operations](GETTING_STARTED.md)** | Step-by-step installation, environment variables configuration, running locally, test suites, and operations. |
 
 ---
 
-## 🎯 Platform Mission & Core Value Proposition
+## Platform Mission and Architecture Overview
 
-SkillForge transforms static technical documents (PDF research papers, textbooks, lecture slides) into two dynamic learning modes:
+QuizLoop transforms static technical documents (PDF research papers, textbooks, lecture slides) into active, human-verified learning workflows:
 
 ```
                                   ┌────────────────────────┐
@@ -27,36 +26,45 @@ SkillForge transforms static technical documents (PDF research papers, textbooks
                                   │      Document PDF      │
                                   └───────────┬────────────┘
                                               │
-                     ┌────────────────────────┴────────────────────────┐
-                     ▼                                                 ▼
-        ┌─────────────────────────┐                       ┌─────────────────────────┐
-        │   Standard Assessment   │                       │  Interactive Simulation │
-        │        (MCQ Mode)       │                       │     (Playground Mode)   │
-        ├─────────────────────────┤                       ├─────────────────────────┤
-        │ • 5–8 Structured MCQs   │                       │ • 3–5 Interactive Labs  │
-        │ • Immediate feedback    │                       │ • Live sliders/controls │
-        │ • Socratic hints        │                       │ • 60 FPS physics canvas │
-        │ • Token-efficient run   │                       │ • Threshold-based goals │
-        └─────────────────────────┘                       └─────────────────────────┘
+                                              ▼
+                                  ┌────────────────────────┐
+                                  │   Curriculum Planner   │
+                                  │  (Objectives & Weights)│
+                                  └───────────┬────────────┘
+                                              │
+                                              ▼
+                                  ┌────────────────────────┐
+                                  │  Human-in-the-Loop     │
+                                  │  Approval / Adjustment │
+                                  └───────────┬────────────┘
+                                              │
+                                              ▼
+                                  ┌────────────────────────┐
+                                  │ Single-Pass MCQ Deck   │
+                                  │ & Socratic Tutoring    │
+                                  └───────────┬────────────┘
+                                              │
+                                              ▼
+                                  ┌────────────────────────┐
+                                  │ Bloom's Taxonomy       │
+                                  │ Mastery Summary Report │
+                                  └────────────────────────┘
 ```
 
-1. **Standard Assessment (MCQ Mode)**:
-   - High-rigor, comprehension-testing multiple choice questions.
-   - Socratic hints and in-depth explanations grounded in the source text.
-2. **Interactive Simulation (Playground Mode)**:
-   - Dynamic single-file React simulations (`App.js`) rendered in real-time in the browser.
-   - Students learn through direct experimentation by manipulating parameters (sliders, toggles) to achieve concrete pedagogical thresholds.
+1. **Document Ingestion**: Upload dense research or technical PDFs with automatic Gemini File API registration and token-aware context caching.
+2. **Curriculum Design**: Gemini 3.7 analyzes document structure and drafts 3 to 5 core learning objectives with proportional question allocations.
+3. **Human-in-the-Loop Review**: LangGraph interrupts execution; learners/educators inspect, adjust, or approve the curriculum.
+4. **Adaptive MCQ & Socratic Tutoring**: Evaluates answers with zero LLM grading lag, offering multi-stage hints and on-demand conceptual coaching without leaking answers.
+5. **Bloom's Mastery Analytics**: Generates cognitive level breakdowns, weakness diagnostics, and targeted follow-up reading recommendations.
 
 ---
 
-## ⚡ Key Technology Stack
+## Key Technology Stack
 
 - **Backend Framework**: Python 3.13 + FastAPI + Uvicorn (Asynchronous, Type-safe)
-- **AI / LLM Core**: Google Gemini 3.7 Flash & Vertex AI (Dynamic Thinking + Selective Search Grounding + Context Caching)
-- **Agent Orchestration**: LangGraph Python (Cyclic StateGraph + Self-Healing Feedback Loop)
-- **AST Parsing**: Tree-sitter + `tree-sitter-javascript` (Native C bindings in Python)
+- **AI / LLM Core**: Google Gemini 3.7 Flash & Vertex AI (Structured Output + Dynamic Context Caching)
+- **Agent Orchestration**: LangGraph Python 1.x (Cyclic StateGraph + Checkpointer + `interrupt()` / `Command(resume=...)`)
 - **Database**: PostgreSQL 15+ (`asyncpg` connection pool + `TIMESTAMPTZ`)
 - **Storage**: Supabase Storage + Google AI Files API
 - **Observability**: LangSmith (`@traceable` LLM & Agent Run Trees)
 - **Frontend**: Next.js 16 + React 19 + Tailwind CSS + Framer Motion + Lucide React
-- **Client Transpiler**: Sucrase (Instant sub-5ms in-browser JSX/TS transpilation)

@@ -1,5 +1,5 @@
 -- ==============================================================================
--- SkillForge Database Migration: Hardened Schema & Audit Remediations
+-- QuizLoop Database Migration: Hardened Schema & Audit Remediations
 -- ==============================================================================
 
 -- Enable UUID extension

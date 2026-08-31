@@ -11,8 +11,8 @@ from app.services.stream_hub import stream_hub
 from app.services.cache_manager import get_or_create_document_cache, release_document_cache
 from app.db import execute, query_row, query
 
-logger = logging.getLogger("skillforge.interactive_graph")
-flow_logger = logging.getLogger("skillforge.prompts_and_flows")
+logger = logging.getLogger("quizloop.interactive_graph")
+flow_logger = logging.getLogger("quizloop.prompts_and_flows")
 
 def check_verification_status(state: InteractiveAgentState) -> Literal["coder", "__end__"]:
     verification_results = state.get("verification_results", [])

@@ -12,9 +12,9 @@ from app.routes import upload, questions, submit, interactive
 import os
 
 configure_logging()
-logger = logging.getLogger("skillforge.main")
-flow_logger = logging.getLogger("skillforge.prompts_and_flows")
-flow_logger = logging.getLogger("skillforge.prompts_and_flows")
+logger = logging.getLogger("quizloop.main")
+flow_logger = logging.getLogger("quizloop.prompts_and_flows")
+flow_logger = logging.getLogger("quizloop.prompts_and_flows")
 
 async def run_db_migrations():
     """Runs the initial schema SQL migration if tables do not exist."""
@@ -40,7 +40,7 @@ async def run_db_migrations():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    logger.info("Starting SkillForge FastAPI service...")
+    logger.info("Starting QuizLoop FastAPI service...")
     await init_db_pool()
     try:
         await run_db_migrations()
@@ -48,11 +48,11 @@ async def lifespan(app: FastAPI):
         logger.error(f"Migration error during startup: {e}", exc_info=True)
     yield
     # Shutdown
-    logger.info("Shutting down SkillForge FastAPI service...")
+    logger.info("Shutting down QuizLoop FastAPI service...")
     await close_db_pool()
 
 app = FastAPI(
-    title="SkillForge Interactive AI Quiz & Simulation Platform",
+    title="QuizLoop Interactive AI Quiz & Simulation Platform",
     version="3.0.0",
     lifespan=lifespan
 )
@@ -117,7 +117,7 @@ async def generic_exception_handler(request: Request, exc: Exception):
 # 3. Healthcheck
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "SkillForge FastAPI", "model": settings.gemini_model_name}
+    return {"status": "ok", "service": "QuizLoop FastAPI", "model": settings.gemini_model_name}
 
 # 4. Include Routers
 app.include_router(upload.router)

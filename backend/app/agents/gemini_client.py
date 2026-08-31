@@ -9,8 +9,8 @@ from langsmith import traceable
 from app.config import settings
 from app.db import execute
 
-logger = logging.getLogger("skillforge.gemini_client")
-flow_logger = logging.getLogger("skillforge.prompts_and_flows")
+logger = logging.getLogger("quizloop.gemini_client")
+flow_logger = logging.getLogger("quizloop.prompts_and_flows")
 
 _client_instance: Optional[genai.Client] = None
 

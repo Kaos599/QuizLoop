@@ -346,8 +346,8 @@ const onDrop = (e: React.DragEvent) => {
             aria-label="Total questions"
           />
           <div className="flex justify-between text-[10px] text-slate-400 font-medium">
-            <span>3 — quick check</span>
-            <span>10 — deep dive</span>
+            <span>3 - quick check</span>
+            <span>10 - deep dive</span>
           </div>
         </div>
 

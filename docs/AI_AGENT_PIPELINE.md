@@ -1,118 +1,107 @@
-# 🤖 Multi-Agent AI Pipeline & LangGraph Architecture
+# Multi-Agent AI Pipeline and LangGraph Architecture
 
-## 1. Multi-Agent StateGraph Architecture
+## 1. Pedagogical StateGraph Architecture
 
-The interactive simulation curriculum is orchestrated as an asynchronous, cyclic **LangGraph** multi-agent graph:
+The entire assessment lifecycle is orchestrated via an asynchronous, cyclic **LangGraph 1.x** StateGraph:
 
 ```mermaid
 stateDiagram-v2
-    [*] --> ContextCacheCheck : Upload PDF & Extract Token Count
-    ContextCacheCheck --> MasterPlanner : Cache Active (if >= 10k) or Direct
-    MasterPlanner --> QuestionPlanner : MasterPlanSchema Validated
+    [*] --> PlanNode : Ingest PDF & QuizConfig
+    PlanNode --> PlanReviewNode : Draft Curriculum Plan
     
-    state QuestionPlanner {
-        [*] --> Lesson1Plan : asyncio.gather
-        [*] --> Lesson2Plan : asyncio.gather
-        [*] --> Lesson3Plan : asyncio.gather
+    state PlanReviewNode {
+        [*] --> AwaitHumanDecision : interrupt(value)
     }
 
-    QuestionPlanner --> Coder : Parallel Goals & Simulation Params
+    PlanReviewNode --> PlanNode : On Adjust / Reject (Retries < 3)
+    PlanReviewNode --> GenerateMCQNode : On Approve (Or Simplified Cap Fallback)
+
+    GenerateMCQNode --> QuizInteractionNode : Single-Pass Deck Synthesis
     
-    state Coder {
-        [*] --> CodeLesson1 : App.js Generation
-        [*] --> CodeLesson2 : App.js Generation
-        [*] --> CodeLesson3 : App.js Generation
+    state QuizInteractionNode {
+        [*] --> AwaitLearnerAction : interrupt(question)
     }
 
-    Coder --> Verifier : Generated Code Payloads
+    QuizInteractionNode --> EvaluateAnswerNode : Action: submit
+    QuizInteractionNode --> TeachMoreNode : Action: learn_more
     
-    state Verifier {
-        [*] --> TreeSitterASTCheck : Native C Worker Thread
+    TeachMoreNode --> QuizInteractionNode : Return Conceptual Coaching
+
+    state EvaluateAnswerNode {
+        [*] --> GradeDeterministically : Compare Selection
     }
 
-    Verifier --> SelfHealingRoute : Check Syntax & Module Whitelist
-    
-    state SelfHealingRoute <<choice>>
-    SelfHealingRoute --> Coder : Syntax Errors & Retries < 3 (With Line Diagnostics)
-    SelfHealingRoute --> DBCommitBarrier : All Codebases Valid OR Max Retries (3)
-    
-    DBCommitBarrier --> BroadcastComplete : Commit Verified Lessons to PostgreSQL
-    BroadcastComplete --> ReleaseCache : Clean up Context Cache
-    ReleaseCache --> [*]
+    EvaluateAnswerNode --> QuizInteractionNode : Incorrect Attempt (Retry)
+    EvaluateAnswerNode --> GenerateMCQNode : Correct Attempt & Questions Remain
+    EvaluateAnswerNode --> SummarizeLessonNode : Correct Attempt & Deck Complete
+
+    SummarizeLessonNode --> [*] : Save Bloom's Mastery Report
 ```
 
 ---
 
-## 2. Pipeline Stages & Node Breakdown
+## 2. Pipeline Stages and Node Specifications
 
-### Stage 0: Dynamic Context Cache Manager ([`cache_manager.py`](file:///g:/Stuff/Study/Programs/SkillForge-Interactive-AI-Quiz-Assessment-Platform/backend/app/services/cache_manager.py))
-- **Trigger**: Document size $\ge 10,000$ tokens.
-- **Action**: Provisions an explicit `cachedContents` object via `client.caches.create` with a 10-minute TTL (`600s`).
-- **Benefit**: Reused across Master Planner and 3 parallel Question Planner passes, cutting prompt token costs by **$75\%$**.
-
----
-
-### Stage 1: Master Planner Node ([`master_planner.py`](file:///g:/Stuff/Study/Programs/SkillForge-Interactive-AI-Quiz-Assessment-Platform/backend/app/agents/interactive_graph/nodes/master_planner.py))
+### Stage 1: Plan Node (`plan_node`)
 - **Role**: Educational curriculum architect.
-- **Model**: `gemini-3.7-flash` with `thinking_budget=4096` (High Thinking) and **Selective Google Search Grounding**.
-- **Prompt Objective**: Analyze the technical document and extract 3 to 5 physical, mathematical, or visual simulation playgrounds where students manipulate variables to observe dynamic system feedback.
-- **Output Schema**: `MasterPlanSchema` (`lessons: [{ title, concept, description }]`).
+- **Model**: `gemini-3.7-flash` with structured schema enforcement.
+- **Objective**: Analyze the technical document and extract 3 to 5 core learning objectives. Deterministically allocate question budgets across objectives according to `total_questions` (clamped between 3 and 10).
+- **Feedback Ingestion**: When triggered via the revision loop, incorporates previous feedback to alter topic weighting, adjust focus areas, or simplify objectives.
 
 ---
 
-### Stage 2: Question Planner Node ([`question_planner.py`](file:///g:/Stuff/Study/Programs/SkillForge-Interactive-AI-Quiz-Assessment-Platform/backend/app/agents/interactive_graph/nodes/question_planner.py))
-- **Role**: Virtual lab experiment designer.
-- **Model**: `gemini-3.7-flash` with `thinking_budget=2048` (Medium Thinking).
-- **Parallelism**: Executes parallel sub-tasks across all master plan lessons using `asyncio.gather`.
-- **State Aggregation**: Uses LangGraph's `Annotated[List[DetailedQuestionPlan], operator.add]` reducer to merge parallel results without state collisions.
-- **Prompt Objective**: For each lesson, define 2–3 **actionable, threshold-based goals** using active verbs ("Increase", "Reach", "Stabilize") and controllable variable specifications (min, max, default, unit).
+### Stage 2: Plan Review Node (`plan_review_node`)
+- **Role**: Human-in-the-loop interruption barrier.
+- **Mechanism**: Calls `interrupt({"plan": state["plan"], "revision": state["revision"]})` and pauses execution.
+- **Resume Contract**: Receives a `Command(resume=...)` payload:
+  - `approve`: Advances directly to `generate_mcq_node`.
+  - `adjust`: Feeds customized user instructions into `plan_feedback` and routes back to `plan_node` (`revision += 1`).
+  - `reject`: Flags restructuring request and routes back to `plan_node`.
+- **Safety Fallback**: If `revision >= MAX_PLAN_REVISIONS` (3), automatically synthesizes a simplified 3-topic focus plan to prevent dead-ending.
 
 ---
 
-### Stage 3: Coder Node ([`coder.py`](file:///g:/Stuff/Study/Programs/SkillForge-Interactive-AI-Quiz-Assessment-Platform/backend/app/agents/interactive_graph/nodes/coder.py))
-- **Role**: React simulation engineer.
-- **Model**: `gemini-3.7-flash` with `thinking_budget=1024` (Low Thinking to maximize the 16,384 output token budget).
-- **Strict UI Contract**:
-  - Root: `flex h-screen w-full bg-[#0B0F1A] text-slate-100 overflow-hidden font-sans`
-  - Left Panel: `w-[260px]` configuration sidebar with sliders and real-time badges.
-  - Right Viewport: Full-screen responsive SVG / HTML Canvas with `viewBox="0 0 1000 700"`.
-  - Goal Dispatch: Wrapped with a `useRef({})` guard to ensure `completeGoal(index)` fires **exactly once** upon threshold transition.
-- **Output Schema**: `CodeGenerationSchema` (`files: {"/App.js": "..."}, dependencies: {"framer-motion": "latest", "lucide-react": "latest"}`).
+### Stage 3: Generate MCQ Deck Node (`generate_mcq_node`)
+- **Role**: Assessment deck synthesizer.
+- **Model**: `gemini-3.7-flash` with JSON schema enforcement.
+- **Optimization**: Generates the complete question deck in a single structured Gemini call.
+- **Question Structure**:
+  - `question_text`: Rigorous, scenario-based inquiry grounded in the source text.
+  - `options`: 4 plausible, unambiguous choices.
+  - `correct_letter`: Target answer (A, B, C, or D) stored in server-only state.
+  - `explanation`: Comprehensive rationalization of why the answer is correct.
+  - `hints`: Progressive multi-tier Socratic clues that guide reasoning without giving away the answer.
 
 ---
 
-### Stage 4: Verifier Node & Tree-Sitter AST Engine ([`verifier.py`](file:///g:/Stuff/Study/Programs/SkillForge-Interactive-AI-Quiz-Assessment-Platform/backend/app/agents/interactive_graph/nodes/verifier.py))
-- **Role**: Static code analysis and contract auditor.
-- **Mechanism**: Parses generated JSX using native C bindings in `tree-sitter-javascript` inside a worker thread (`asyncio.to_thread`) to prevent event-loop blocking.
-- **Audits**:
-  1. `root_node.has_error`: Traps missing braces, unclosed JSX tags, and syntax anomalies with exact line and column coordinates.
-  2. *Module Whitelist*: Ensures only approved modules (`react`, `framer-motion`, `lucide-react`) are referenced.
-  3. *Export Contract*: Confirms component definition `function App() { ... }` and `renderComponent(App)`.
+### Stage 4: Quiz Interaction Node (`quiz_interaction_node`)
+- **Role**: Client interaction boundary.
+- **Mechanism**: Calls `interrupt(...)` with the sanitized active question (`id`, `question_text`, `options`, `objective_title`, `hints`).
+- **Security Barrier**: Strips `correct_letter` and answer metadata from the public payload before serialization.
 
 ---
 
-### Stage 5: Self-Healing Reflection Loop
-- If any codebase fails AST verification, the conditional edge `check_verification_status` intercepts the failure:
-  - Bounded Retries: Capped at `retry_count < 3` and graph `recursion_limit = 12`.
-  - Feedback Injection: Re-prompts the Coder node with the exact syntax error line diagnostics.
-  - Resilience: Once verified (or max retries reached), proceeds to the write-barrier.
+### Stage 5: Evaluate Answer Node (`evaluate_answer_node`)
+- **Role**: Zero-latency answer grader.
+- **Mechanism**: Evaluates student selection against the server-side answer key in sub-millisecond memory without LLM invocation.
+- **Branching**:
+  - **Correct**: Marks objective milestone, records attempt telemetry, pops next question from `mcq_queue`, and transitions to the next item or summary.
+  - **Incorrect**: Records attempt telemetry, provides contextual hints, and keeps question active for retry without penalty.
 
 ---
 
-## 3. Gemini 3.7 Thinking Budgets & Grounding Configuration
-
-| Pipeline Stage | Model | Thinking Budget | Google Search Grounding | Output Tokens |
-| :--- | :--- | :--- | :--- | :--- |
-| **Standard Quiz Generator** | `gemini-3.7-flash` | `2,048` | **Enabled** | `16,384` |
-| **1. Master Planner** | `gemini-3.7-flash` | `4,096` (High) | **Enabled** | `16,384` |
-| **2. Question Planner** | `gemini-3.7-flash` | `2,048` (Medium) | Disabled | `16,384` |
-| **3. Coder Node** | `gemini-3.7-flash` | `1,024` (Low) | Disabled | `16,384` |
-| **4. Verifier Node** | Native C / Tree-sitter | *N/A (Local)* | *N/A* | *N/A* |
+### Stage 6: Teach More Node (`teach_more_node`)
+- **Role**: Socratic tutor and concept coach.
+- **Model**: `gemini-3.7-flash` conditioned on source document context.
+- **Objective**: Provides an in-depth, pedagogical walkthrough of the concept underlying the active question without revealing the correct option letter.
 
 ---
 
-## 4. Observability & LangSmith Tracing
-
-All LLM calls and LangGraph graph executions are instrumented with `@traceable`:
-- **LangSmith Tracing**: Captures complete invocation trees, latency breakdowns, and system instructions.
-- **Token Auditing**: Token metrics (`prompt_tokens`, `thought_tokens`, `output_tokens`, `total_tokens`) are recorded in PostgreSQL `sessions` and `token_usage_logs` asynchronously on every call.
+### Stage 7: Summarize Lesson Node (`summarize_lesson_node`)
+- **Role**: Cognitive analytics and mastery assessor.
+- **Model**: `gemini-3.7-flash`.
+- **Objective**: Evaluates overall attempt telemetry and produces:
+  - Overall performance score & mastery classification (Novice, Competent, Proficient, Master).
+  - Objective-by-objective proficiency ratings mapped to Bloom's taxonomy cognitive levels.
+  - Distinct strengths and growth opportunities.
+  - Actionable follow-up reading and study recommendations.

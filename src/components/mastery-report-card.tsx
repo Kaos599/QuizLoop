@@ -55,7 +55,7 @@ export function MasteryReportCard({ summary }: MasteryReportCardProps) {
           Your mastery report
         </h2>
         <p className="text-xs sm:text-sm text-slate-300 max-w-lg mx-auto mt-1 leading-relaxed">
-          How you performed across every topic — with personalized next steps.
+          How you performed across every topic - with personalized next steps.
         </p>
       </div>
 
@@ -93,7 +93,7 @@ export function MasteryReportCard({ summary }: MasteryReportCardProps) {
               <div className="text-2xl font-bold text-slate-900">
                 {summary.perObjective?.length
                   ? `${summary.perObjective.filter((r) => r.passed).length} / ${summary.perObjective.length} topics`
-                  : "—"}
+                  : " - "}
               </div>
               <p className="text-[11px] text-slate-500">
                 {summary.firstTryCorrect} landed on the first try
@@ -108,7 +108,7 @@ export function MasteryReportCard({ summary }: MasteryReportCardProps) {
               <p className="text-[11px] text-slate-500">
                 {summary.totalAttempts > (summary.perObjective?.length ?? 0)
                   ? "Some questions needed a retry"
-                  : "Clean run — no retries needed"}
+                  : "Clean run - no retries needed"}
               </p>
             </div>
           </div>

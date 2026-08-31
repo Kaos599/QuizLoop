@@ -5,7 +5,7 @@ from google.genai import types
 from app.config import settings
 from app.services.gemini_file_service import get_gemini_client
 
-logger = logging.getLogger("skillforge.cache_manager")
+logger = logging.getLogger("quizloop.cache_manager")
 
 CACHE_MIN_TOKEN_THRESHOLD = 10000 # Minimum tokens to trigger context caching (10k tokens)
 CACHE_DEFAULT_TTL = "600s" # 10 minutes TTL
@@ -55,7 +55,7 @@ async def get_or_create_document_cache(
 
         cache_config = types.CreateCachedContentConfig(
             contents=contents,
-            display_name=f"skillforge-session-{session_id}",
+            display_name=f"quizloop-session-{session_id}",
             ttl=CACHE_DEFAULT_TTL
         )
 

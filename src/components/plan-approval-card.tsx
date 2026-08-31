@@ -208,7 +208,7 @@ export function PlanApprovalCard({
               <div className="flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-teal-300 bg-teal-900/60 border border-teal-500/40 px-2.5 py-0.5 rounded-full">
                   <Sparkles className="w-3 h-3 text-teal-400" />
-                  Your lesson plan — review & approve
+                  Your lesson plan - review & approve
                 </span>
                 <span className={cn(
                   "text-[11px] font-semibold px-2.5 py-0.5 rounded-full",
@@ -644,9 +644,9 @@ export function PlanApprovalCard({
                 <TriangleAlert className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                 <span>
                   {capReached
-                    ? "Revision limit reached — this plan is the last attempt. Approve to begin."
+                    ? "Revision limit reached - this plan is the last attempt. Approve to begin."
                     : allReviewed
-                    ? "All topics confirmed! Click 'Looks good — start lesson' to begin."
+                    ? "All topics confirmed! Click 'Looks good - start lesson' to begin."
                     : `Please review and confirm each of the ${plan.length} topics (${reviewedCount}/${plan.length} confirmed) before starting.`}
                 </span>
               </div>
@@ -700,7 +700,7 @@ export function PlanApprovalCard({
                     <>
                       <CheckCircle2 className="w-4 h-4" />
                       {allReviewed
-                        ? "Looks good — start lesson"
+                        ? "Looks good - start lesson"
                         : `Review all topics to start (${reviewedCount}/${plan.length})`}
                     </>
                   )}

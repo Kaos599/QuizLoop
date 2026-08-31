@@ -1,5 +1,5 @@
 """
-Pedagogical graph (v2) behavior tests — HITL loop, retries, no-answer-leak.
+Pedagogical graph (v2) behavior tests - HITL loop, retries, no-answer-leak.
 
 LLM calls are mocked: build_test_graph() + monkeypatched generate_gemini_content
 and get_gemini_part_for_file. The checkpointer is in-memory.

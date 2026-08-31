@@ -9,7 +9,7 @@ from app.agents.gemini_client import generate_gemini_content
 from app.services.gemini_file_service import get_gemini_part_for_file
 from app.agents.interactive_graph.state import InteractiveAgentState, AgentPhase, DetailedQuestionPlan
 
-logger = logging.getLogger("skillforge.question_planner")
+logger = logging.getLogger("quizloop.question_planner")
 
 class GoalSpec(BaseModel):
     id: Optional[str] = None

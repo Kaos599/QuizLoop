@@ -30,13 +30,13 @@ def configure_logging():
         root_logger.addHandler(console_handler)
 
     app_file_handler = RotatingFileHandler(
-        os.path.join(LOGS_DIR, "skillforge.log"),
+        os.path.join(LOGS_DIR, "quizloop.log"),
         maxBytes=20 * 1024 * 1024, backupCount=5, encoding="utf-8",
     )
     app_file_handler.setFormatter(logging.Formatter(LOG_FORMAT))
     root_logger.addHandler(app_file_handler)
 
-    flow_logger = logging.getLogger("skillforge.prompts_and_flows")
+    flow_logger = logging.getLogger("quizloop.prompts_and_flows")
     flow_logger.setLevel(logging.INFO)
     flow_file_handler = RotatingFileHandler(
         os.path.join(LOGS_DIR, "prompts_and_flows.log"),

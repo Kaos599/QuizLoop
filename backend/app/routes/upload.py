@@ -13,7 +13,7 @@ from app.schemas.interactive import UploadResponse
 from app.schemas.pedagogical import QuizConfig
 from app.db import execute, query_row
 
-logger = logging.getLogger("skillforge.routes.upload")
+logger = logging.getLogger("quizloop.routes.upload")
 router = APIRouter(prefix="/api", tags=["upload"])
 
 MAX_FILE_SIZE = 26214400 # 25MB

@@ -7,14 +7,14 @@ from google.genai import types
 from app.agents.gemini_client import generate_gemini_content
 from app.agents.interactive_graph.state import InteractiveAgentState, AgentPhase, GeneratedCode, DetailedQuestionPlan
 
-logger = logging.getLogger("skillforge.coder_node")
+logger = logging.getLogger("quizloop.coder_node")
 
 class CodeGenerationSchema(BaseModel):
     app_js: str = Field(description="The complete, working single-file React JavaScript/JSX code for /App.js including function App() and renderComponent(App)")
     dependencies: dict[str, str] = Field(default_factory=lambda: {"framer-motion": "latest", "lucide-react": "latest"})
 
 CODER_SYSTEM_INSTRUCTION = """
-You are a world-class Simulation Engineer, Creative Computational Designer, and React Developer for SkillForge.
+You are a world-class Simulation Engineer, Creative Computational Designer, and React Developer for QuizLoop.
 Build an authentic, engaging, and rich single-file interactive React simulation (App.js) that makes abstract scientific, mathematical, physical, and computational systems come alive visually.
 
 ================================================================================
@@ -48,7 +48,7 @@ CRITICAL DESIGN INTEGRITY & ANTI-COLLISION RULES
 
 1. CLEAN COORDINATE & AXIS SYSTEMS:
    - If drawing graphs or coordinate planes: NEVER overlap multiple X-axes on top of each other. Use a single unified axis with clear color-coded curve legends or mode selectors.
-   - Place live scores and percentages inside structured cards or clean HUD badges — NEVER let raw unanchored `<text>` float directly on top of dynamic curves.
+   - Place live scores and percentages inside structured cards or clean HUD badges - NEVER let raw unanchored `<text>` float directly on top of dynamic curves.
 
 2. AVOID UNSTYLED HTML ELEMENTS:
    - Do NOT use unstyled browser `<select>` dropdowns (they have dark-on-dark clipping). Use `PillSelector` or custom styled buttons.

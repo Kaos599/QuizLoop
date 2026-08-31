@@ -1,212 +1,134 @@
-# 🗄️ SkillForge Database Schema & Data Dictionary
+# QuizLoop Database Schema and Data Dictionary
 
 ## 1. Entity-Relationship (ER) Diagram
 
 ```mermaid
 erDiagram
-    sessions ||--o{ questions : "has many"
-    sessions ||--o{ interactive_sessions : "has one"
-    sessions ||--o{ token_usage_logs : "tracks"
-    questions ||--o{ attempts : "has many"
-    interactive_sessions ||--o{ interactive_lessons : "has many"
-    interactive_lessons ||--o{ goal_progress : "tracks"
+    SESSIONS ||--o{ PEDAGOGICAL_SESSIONS : "tracks state for"
+    SESSIONS ||--o{ SUMMARY_REPORT : "produces"
+    SESSIONS ||--o{ TOKEN_USAGE_LOGS : "logs costs for"
 
-    sessions {
-        uuid id PK
-        varchar pdf_filename
-        text file_uri
-        text gemini_file_uri
-        text pdf_content
-        varchar status
-        bigint input_tokens
-        bigint output_tokens
-        bigint thought_tokens
-        bigint total_tokens
-        timestamptz created_at
-        timestamptz updated_at
+    SESSIONS {
+        UUID id PK
+        VARCHAR pdf_filename
+        TEXT file_uri
+        TEXT gemini_file_uri
+        VARCHAR status
+        BIGINT input_tokens
+        BIGINT output_tokens
+        BIGINT total_tokens
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
     }
 
-    questions {
-        uuid id PK
-        uuid session_id FK
-        text question_text
-        jsonb options
-        integer correct_answer
-        text explanation
-        text hint
-        integer order_index
-        boolean is_answered_correctly
-        timestamptz created_at
+    PEDAGOGICAL_SESSIONS {
+        UUID id PK
+        UUID session_id FK
+        JSONB quiz_config
+        JSONB plan
+        VARCHAR plan_status
+        INTEGER revision
+        BOOLEAN plan_cap_reached
+        JSONB slots
+        JSONB mcq_queue
+        JSONB current_objective
+        JSONB current_mcq
+        BOOLEAN hint_revealed
+        TEXT coaching_message
+        JSONB last_result
+        JSONB attempts_json
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
     }
 
-    attempts {
-        uuid id PK
-        uuid question_id FK
-        integer selected_answer
-        boolean is_correct
-        timestamptz created_at
+    SUMMARY_REPORT {
+        UUID id PK
+        UUID session_id FK
+        JSONB summary
+        TIMESTAMPTZ created_at
     }
 
-    interactive_sessions {
-        uuid id PK
-        uuid session_id FK
-        jsonb master_plan
-        varchar current_phase
-        integer progress_percent
-        timestamptz created_at
-        timestamptz updated_at
-    }
-
-    interactive_lessons {
-        uuid id PK
-        uuid interactive_session_id FK
-        varchar title
-        text concept_description
-        jsonb sandpack_code
-        jsonb goals
-        integer order_index
-        varchar verification_status
-        timestamptz created_at
-    }
-
-    goal_progress {
-        uuid id PK
-        uuid lesson_id FK
-        integer goal_index
-        boolean completed
-        timestamptz completed_at
-        integer attempts
-    }
-
-    token_usage_logs {
-        uuid id PK
-        uuid session_id FK
-        varchar node_name
-        varchar model_name
-        integer prompt_tokens
-        integer thought_tokens
-        integer output_tokens
-        integer total_tokens
-        integer latency_ms
-        timestamptz created_at
+    TOKEN_USAGE_LOGS {
+        UUID id PK
+        UUID session_id FK
+        VARCHAR node_name
+        VARCHAR model_name
+        INTEGER prompt_tokens
+        INTEGER output_tokens
+        INTEGER latency_ms
+        TIMESTAMPTZ created_at
     }
 ```
 
 ---
 
-## 2. Table Specifications & Data Dictionary
+## 2. Table Specifications
 
-### Table 1: `sessions`
-The root entity representing an uploaded document session.
+### 1. `sessions` Table
+The primary session ledger created upon document upload.
+
 | Column | Type | Constraints | Description |
 | :--- | :--- | :--- | :--- |
-| `id` | `UUID` | `PRIMARY KEY`, Default `gen_random_uuid()` | Unique session identifier. |
-| `pdf_filename` | `VARCHAR(255)` | Nullable | Original uploaded file name. |
-| `file_uri` | `TEXT` | Nullable | Supabase Storage public/signed URL. |
-| `gemini_file_uri`| `TEXT` | Nullable | Active Google Gemini File API resource URI. |
-| `pdf_content` | `TEXT` | Nullable | Extracted raw text fallback. |
-| `status` | `VARCHAR(50)` | `NOT NULL`, Default `'uploading'` | Lifecycle: `'uploading'`, `'generating'`, `'active'`, `'failed'`. |
-| `input_tokens` | `BIGINT` | `NOT NULL`, Default `0`, `CHECK >= 0` | Total prompt tokens consumed. |
-| `thought_tokens`| `BIGINT`| `NOT NULL`, Default `0`, `CHECK >= 0` | Total Gemini 3.7 reasoning tokens. |
-| `output_tokens`| `BIGINT` | `NOT NULL`, Default `0`, `CHECK >= 0` | Total generation candidate tokens. |
-| `total_tokens` | `BIGINT` | `NOT NULL`, Default `0`, `CHECK >= 0` | Total tokens consumed. |
-| `created_at` | `TIMESTAMPTZ`| `NOT NULL`, Default `NOW()` | Creation timestamp. |
-| `updated_at` | `TIMESTAMPTZ`| `NOT NULL`, Default `NOW()` | Auto-updated via trigger. |
+| `id` | `UUID` | `PRIMARY KEY` | Unique session identifier. |
+| `pdf_filename` | `VARCHAR(255)` | `NULLABLE` | Original uploaded document name. |
+| `file_uri` | `TEXT` | `NULLABLE` | Supabase storage bucket file path. |
+| `gemini_file_uri` | `TEXT` | `NULLABLE` | Google Gemini File API URI. |
+| `status` | `VARCHAR(50)` | `NOT NULL, DEFAULT 'uploading'` | Lifecycle status (`uploading`, `ready`, `failed`). |
+| `input_tokens` | `BIGINT` | `NOT NULL, DEFAULT 0` | Total prompt tokens consumed. |
+| `output_tokens` | `BIGINT` | `NOT NULL, DEFAULT 0` | Total completion tokens generated. |
+| `total_tokens` | `BIGINT` | `NOT NULL, DEFAULT 0` | Cumulative token usage. |
+| `created_at` | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | Ingestion timestamp. |
+| `updated_at` | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | Last update timestamp. |
 
 ---
 
-### Table 2: `questions`
-Multiple-choice questions generated in standard assessment mode.
+### 2. `pedagogical_sessions` Table
+Maintains the server-side snapshot of the LangGraph state machine across interrupts.
+
 | Column | Type | Constraints | Description |
 | :--- | :--- | :--- | :--- |
-| `id` | `UUID` | `PRIMARY KEY` | Unique question identifier. |
-| `session_id` | `UUID` | `FK -> sessions(id) ON DELETE CASCADE` | Parent session. *(Indexed: `idx_questions_session_id`)* |
-| `question_text`| `TEXT` | `NOT NULL` | The question prompt text. |
-| `options` | `JSONB` | `NOT NULL` | Array of 4 string options: `["A", "B", "C", "D"]`. |
-| `correct_answer`| `INTEGER` | `NOT NULL`, Range `[0-3]` | Zero-based index of correct option. |
-| `explanation` | `TEXT` | Nullable | Detailed educational explanation. |
-| `hint` | `TEXT` | Nullable | Socratic guiding hint. |
-| `order_index` | `INTEGER` | `NOT NULL` | Sequence order in quiz UI. |
-| `is_answered_correctly` | `BOOLEAN` | `NOT NULL`, Default `FALSE` | Success flag for student attempt. |
-| `created_at` | `TIMESTAMPTZ`| `NOT NULL`, Default `NOW()` | Creation timestamp. |
+| `id` | `UUID` | `PRIMARY KEY` | Record ID. |
+| `session_id` | `UUID` | `NOT NULL, UNIQUE, FK -> sessions(id)` | Associated session ID. |
+| `quiz_config` | `JSONB` | `NULLABLE` | Configuration parameters (`total_questions`, `difficulty`, `question_style`). |
+| `plan` | `JSONB` | `NULLABLE` | Array of pedagogical objectives, concepts, and question budgets. |
+| `plan_status` | `VARCHAR(50)` | `DEFAULT 'drafting'` | Status (`drafting`, `review`, `approved`, `completed`). |
+| `revision` | `INTEGER` | `NOT NULL, DEFAULT 0` | Count of plan modification iterations. |
+| `plan_cap_reached` | `BOOLEAN` | `NOT NULL, DEFAULT FALSE` | True if max revision cap (3) was triggered. |
+| `slots` | `JSONB` | `NULLABLE` | Objective schedule slots with question assignments. |
+| `mcq_queue` | `JSONB` | `NULLABLE` | Internal pre-generated question deck (including answer keys). |
+| `current_objective` | `JSONB` | `NULLABLE` | Active learning objective. |
+| `current_mcq` | `JSONB` | `NULLABLE` | Active question payload. |
+| `hint_revealed` | `BOOLEAN` | `NOT NULL, DEFAULT FALSE` | Flag tracking if hint was requested. |
+| `coaching_message` | `TEXT` | `NULLABLE` | Active conceptual coaching message. |
+| `last_result` | `JSONB` | `NULLABLE` | Result payload from most recent answer attempt. |
+| `attempts_json` | `JSONB` | `NULLABLE` | Historical log of all user question attempts and telemetry. |
+| `created_at` | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | Creation timestamp. |
+| `updated_at` | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | Timestamp of last state mutation. |
 
 ---
 
-### Table 3: `attempts`
-Student submission attempts per question.
+### 3. `summary_report` Table
+Stores post-assessment mastery analytics and performance diagnostics.
+
 | Column | Type | Constraints | Description |
 | :--- | :--- | :--- | :--- |
-| `id` | `UUID` | `PRIMARY KEY` | Unique attempt ID. |
-| `question_id` | `UUID` | `FK -> questions(id) ON DELETE CASCADE` | Target question. *(Indexed: `idx_attempts_question_id`)* |
-| `selected_answer` | `INTEGER` | `NOT NULL` | Option index chosen by student. |
-| `is_correct` | `BOOLEAN` | `NOT NULL` | Whether selection was correct. |
-| `created_at` | `TIMESTAMPTZ` | `NOT NULL`, Default `NOW()` | Attempt timestamp. |
+| `id` | `UUID` | `PRIMARY KEY` | Report ID. |
+| `session_id` | `UUID` | `NOT NULL, UNIQUE, FK -> sessions(id)` | Associated session ID. |
+| `summary` | `JSONB` | `NOT NULL` | Comprehensive mastery payload (scores, Bloom's levels, strengths, growth areas, recommendations). |
+| `created_at` | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | Report generation timestamp. |
 
 ---
 
-### Table 4: `interactive_sessions`
-Metadata and state tracking for the multi-lesson interactive simulation mode.
+### 4. `token_usage_logs` Table
+Audit ledger tracking token expenditures per agent node execution.
+
 | Column | Type | Constraints | Description |
 | :--- | :--- | :--- | :--- |
-| `id` | `UUID` | `PRIMARY KEY` | Interactive session ID. |
-| `session_id` | `UUID` | `FK -> sessions(id) ON DELETE CASCADE` | Parent base session. *(Indexed: `idx_interactive_sessions_session_id`)* |
-| `master_plan` | `JSONB` | `NOT NULL`, Default `'[]'::jsonb` | Array of pedagogical simulation concept specs. |
-| `current_phase`| `VARCHAR(50)` | `NOT NULL`, Default `'PENDING'` | Agent phase (`MASTER_PLANNING`, `CODE_GENERATION`, `COMPLETE`, etc.). |
-| `progress_percent` | `INTEGER` | `NOT NULL`, Default `0`, Range `0-100` | UI progress bar percentage. |
-| `created_at` | `TIMESTAMPTZ` | `NOT NULL`, Default `NOW()` | Creation timestamp. |
-| `updated_at` | `TIMESTAMPTZ` | `NOT NULL`, Default `NOW()` | Auto-updated via trigger. |
-
----
-
-### Table 5: `interactive_lessons`
-Individual interactive simulation sandboxes generated by the Coder and Verifier nodes.
-| Column | Type | Constraints | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | `UUID` | `PRIMARY KEY` | Lesson ID. |
-| `interactive_session_id` | `UUID` | `FK -> interactive_sessions(id) ON DELETE CASCADE` | Parent session. *(Indexed: `idx_interactive_lessons_interactive_session_id`)* |
-| `title` | `VARCHAR(255)` | `NOT NULL` | Human-readable simulation title. |
-| `concept_description` | `TEXT` | Nullable | Pedagogical concept explanation. |
-| `sandpack_code` | `JSONB` | `NOT NULL` | Object containing `files: {"/App.js": "..."}`, `entryFile`, and `dependencies`. |
-| `goals` | `JSONB` | `NOT NULL` | Array of actionable goal objects (`description`, `hint`, `validationType`). |
-| `order_index` | `INTEGER` | `NOT NULL` | Sequence order in lesson carousel. |
-| `verification_status` | `VARCHAR(20)` | `NOT NULL`, Default `'PENDING'` | AST verification state (`'VERIFIED'`, `'FAILED'`). |
-| `created_at` | `TIMESTAMPTZ` | `NOT NULL`, Default `NOW()` | Creation timestamp. |
-
----
-
-### Table 6: `goal_progress`
-Real-time tracking of student completion for milestones inside each simulation.
-| Column | Type | Constraints | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | `UUID` | `PRIMARY KEY` | Unique record ID. |
-| `lesson_id` | `UUID` | `FK -> interactive_lessons(id) ON DELETE CASCADE` | Target lesson. *(Indexed: `idx_goal_progress_lesson_id`)* |
-| `goal_index` | `INTEGER` | `NOT NULL` | Zero-based index of the goal. |
-| `completed` | `BOOLEAN` | `NOT NULL`, Default `FALSE` | Whether milestone is achieved. |
-| `completed_at`| `TIMESTAMPTZ` | Nullable | First completion timestamp. |
-| `attempts` | `INTEGER` | `NOT NULL`, Default `0` | Number of trigger dispatches. |
-
-> [!IMPORTANT]
-> **Composite Unique Constraint**: `UNIQUE (lesson_id, goal_index)` enables non-blocking atomic upserts via:
-> ```sql
-> INSERT INTO goal_progress (lesson_id, goal_index, completed, completed_at, attempts)
-> VALUES ($1, $2, TRUE, NOW(), 1)
-> ON CONFLICT (lesson_id, goal_index)
-> DO UPDATE SET completed = TRUE, completed_at = NOW(), attempts = goal_progress.attempts + 1;
-> ```
-
----
-
-### Table 7: `token_usage_logs`
-Fine-grained telemetry and auditing ledger for all AI model invocations.
-| Column | Type | Constraints | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | `UUID` | `PRIMARY KEY` | Log entry ID. |
-| `session_id` | `UUID` | `FK -> sessions(id) ON DELETE CASCADE` | Associated session. *(Indexed: `idx_token_usage_session_id`)* |
-| `node_name` | `VARCHAR(100)` | `NOT NULL` | Agent node (`master_planner`, `question_planner_0`, `coder_0`, etc.). |
-| `model_name` | `VARCHAR(100)` | `NOT NULL` | Target Gemini model (`gemini-3.7-flash`). |
-| `prompt_tokens` | `INTEGER` | `NOT NULL`, Default `0` | Input prompt tokens. |
-| `thought_tokens`| `INTEGER` | `NOT NULL`, Default `0` | Gemini reasoning/thinking tokens. |
-| `output_tokens` | `INTEGER` | `NOT NULL`, Default `0` | Output generation tokens. |
-| `total_tokens` | `INTEGER` | `NOT NULL`, Default `0` | Total call tokens. |
-| `latency_ms` | `INTEGER` | `NOT NULL`, Default `0` | Round-trip duration in milliseconds. |
-| `created_at` | `TIMESTAMPTZ` | `NOT NULL`, Default `NOW()` | Timestamp of invocation. |
+| `id` | `UUID` | `PRIMARY KEY` | Log ID. |
+| `session_id` | `UUID` | `NOT NULL, FK -> sessions(id)` | Associated session ID. |
+| `node_name` | `VARCHAR(100)` | `NOT NULL` | Agent node name (`plan_node`, `generate_mcq_node`, `teach_more_node`, etc.). |
+| `model_name` | `VARCHAR(100)` | `NOT NULL` | LLM model identifier (`gemini-3.7-flash`). |
+| `prompt_tokens` | `INTEGER` | `NOT NULL, DEFAULT 0` | Input token count. |
+| `output_tokens` | `INTEGER` | `NOT NULL, DEFAULT 0` | Generated token count. |
+| `latency_ms` | `INTEGER` | `NOT NULL, DEFAULT 0` | Execution latency in milliseconds. |
+| `created_at` | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | Timestamp. |

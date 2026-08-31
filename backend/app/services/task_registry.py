@@ -12,7 +12,7 @@ import time
 import uuid
 from typing import Any, Dict, Optional
 
-logger = logging.getLogger("skillforge.task_registry")
+logger = logging.getLogger("quizloop.task_registry")
 
 MAX_TASKS = 200
 
@@ -67,7 +67,7 @@ class TaskRegistry:
         try:
             await coro
             record.status = "done"
-        except Exception as e:  # noqa: BLE001 — surfaced via GET task endpoint
+        except Exception as e:  # noqa: BLE001 - surfaced via GET task endpoint
             record.status = "failed"
             record.error = str(e)
             logger.warning(

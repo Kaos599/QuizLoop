@@ -44,7 +44,7 @@ async def test_pipeline():
     logger.info(f"✓ Gemini Response: {response.strip()}")
 
     # 3. Verify Local Log Files Exist and Contain Data
-    app_log = os.path.join(LOGS_DIR, "skillforge.log")
+    app_log = os.path.join(LOGS_DIR, "quizloop.log")
     flows_log = os.path.join(LOGS_DIR, "prompts_and_flows.log")
 
     logger.info("3. Checking local log files...")
@@ -73,7 +73,7 @@ async def test_pipeline():
     for r in runs:
         logger.info(f"  - Run ID: {r.id} | Name: {r.name} | Type: {r.run_type} | Status: {r.status} | Latency: {r.latency}s")
         logger.info(f"    Trace link: https://smith.langchain.com/projects/p/{target_project}?r={r.id}")
-    assert len(runs) >= 1, "No runs found in LangSmith — tracing is not wired up!"
+    assert len(runs) >= 1, "No runs found in LangSmith - tracing is not wired up!"
 
     logger.info("\n" + "=" * 60)
     logger.info("✅ ALL LOGGING & LANGSMITH VERIFICATION CHECKS PASSED!")

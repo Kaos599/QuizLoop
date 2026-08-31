@@ -11,7 +11,7 @@ from app.schemas.interactive import (
 from app.services.stream_hub import stream_hub
 from app.db import query, query_row, execute
 
-logger = logging.getLogger("skillforge.routes.interactive")
+logger = logging.getLogger("quizloop.routes.interactive")
 router = APIRouter(prefix="/api/interactive", tags=["interactive"])
 
 @router.get("/{session_id}/status")
