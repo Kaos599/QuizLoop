@@ -3,6 +3,8 @@ from httpx import AsyncClient, ASGITransport
 from app.main import app
 from app.schemas.pedagogical import (
     UploadResponse,
+    GenerateQuizRequest,
+    GenerateQuizResponse,
     SubmitMCQResponse,
     PlanObjectiveSchema,
     MasterySummarySchema,
@@ -32,11 +34,24 @@ async def test_error_response_format_on_not_found():
         assert "detail" not in data
 
 def test_camel_case_upload_response():
-    resp = UploadResponse(session_id="test-123", gemini_file_uri="https://gemini.api/123", task_id="task-456")
+    resp = UploadResponse(session_id="test-123", gemini_file_uri="https://gemini.api/123", file_name="document.pdf", status="ready")
     serialized = resp.model_dump(by_alias=True)
-    assert "sessionId" in serialized
-    assert "geminiFileUri" in serialized
-    assert "taskId" in serialized
+    assert serialized["sessionId"] == "test-123"
+    assert serialized["geminiFileUri"] == "https://gemini.api/123"
+    assert serialized["fileName"] == "document.pdf"
+    assert serialized["status"] == "ready"
+
+def test_camel_case_generate_quiz_contract():
+    req = GenerateQuizRequest(total_questions=3, difficulty="intermediate")
+    req_dump = req.model_dump(by_alias=True)
+    assert req_dump["totalQuestions"] == 3
+    assert req_dump["difficulty"] == "intermediate"
+
+    resp = GenerateQuizResponse(session_id="sess-123", task_id="task-456", status="generating")
+    resp_dump = resp.model_dump(by_alias=True)
+    assert resp_dump["sessionId"] == "sess-123"
+    assert resp_dump["taskId"] == "task-456"
+    assert resp_dump["status"] == "generating"
 
 def test_camel_case_submit_mcq_response():
     next_q = MCQItemPublic(

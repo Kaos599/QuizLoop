@@ -37,6 +37,11 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown
     logger.info("Shutting down QuizLoop FastAPI service...")
+    try:
+        from app.agents.pedagogical_graph import close_checkpointer_pool
+        await close_checkpointer_pool()
+    except Exception as e:
+        logger.warning(f"Error during checkpointer pool shutdown: {e}")
     await close_db_pool()
 
 app = FastAPI(

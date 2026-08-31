@@ -85,7 +85,6 @@ CREATE TABLE IF NOT EXISTS pedagogical_sessions (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_pedagogical_sessions_session_id ON pedagogical_sessions(session_id);
-CREATE INDEX IF NOT EXISTS idx_pedagogical_sessions_session_id ON pedagogical_sessions(session_id);
 
 DROP TRIGGER IF EXISTS trg_pedagogical_sessions_updated_at ON pedagogical_sessions;
 CREATE TRIGGER trg_pedagogical_sessions_updated_at
@@ -97,9 +96,21 @@ CREATE TABLE IF NOT EXISTS summary_report (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     session_id UUID NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
     summary JSONB NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_summary_report_session_id ON summary_report(session_id);
-CREATE INDEX IF NOT EXISTS idx_summary_report_session_id ON summary_report(session_id);
+
+DROP TRIGGER IF EXISTS trg_summary_report_updated_at ON summary_report;
+CREATE TRIGGER trg_summary_report_updated_at
+BEFORE UPDATE ON summary_report
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- 5. Enable Row Level Security (RLS) across all application tables
+ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE token_usage_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pedagogical_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE summary_report ENABLE ROW LEVEL SECURITY;
+
 

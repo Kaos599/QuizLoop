@@ -41,7 +41,6 @@ MAX_PLAN_REVISIONS = 3  # LLM re-plans allowed before simplified fallback
 DEFAULT_QUIZ_CONFIG = {
     "total_questions": 5,
     "difficulty": "auto",
-    "question_style": "scenario",
 }
 
 # ---------------------------------------------------------------------------
@@ -234,7 +233,7 @@ async def _sync_state_to_db(state: Dict[str, Any]) -> None:
               (session_id, plan, plan_status, current_objective, current_mcq,
                quiz_config, slots, attempts_json, hint_revealed, coaching_message,
                last_result, revision, plan_cap_reached, mcq_queue)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+            VALUES ($1::uuid, $2::jsonb, $3, $4::jsonb, $5::jsonb, $6::jsonb, $7::jsonb, $8::jsonb, $9, $10, $11::jsonb, $12, $13, $14::jsonb)
             ON CONFLICT (session_id) DO UPDATE SET
               plan = EXCLUDED.plan,
               plan_status = EXCLUDED.plan_status,
@@ -276,8 +275,8 @@ async def _sync_state_to_db(state: Dict[str, Any]) -> None:
             await execute(
                 """
                 INSERT INTO summary_report (session_id, summary)
-                VALUES ($1, $2)
-                ON CONFLICT (session_id) DO UPDATE SET summary = EXCLUDED.summary
+                VALUES ($1::uuid, $2::jsonb)
+                ON CONFLICT (session_id) DO UPDATE SET summary = EXCLUDED.summary, updated_at = NOW()
                 """,
                 session_id, json.dumps(state["summary"])
             )
@@ -286,7 +285,7 @@ async def _sync_state_to_db(state: Dict[str, Any]) -> None:
 
     try:
         await execute(
-            "UPDATE sessions SET status = $2, updated_at = NOW() WHERE id = $1",
+            "UPDATE sessions SET status = $2, updated_at = NOW() WHERE id = $1::uuid",
             session_id,
             "completed" if state.get("plan_status") == "completed" else "active"
         )
@@ -336,16 +335,6 @@ def _difficulty_instruction(cfg: Dict[str, Any]) -> str:
     if diff in ("beginner", "intermediate", "advanced"):
         return f"Target difficulty for objectives and questions: {diff}. "
     return "Pick the appropriate difficulty for each objective based on the material itself. "
-
-
-def _style_instruction(cfg: Dict[str, Any]) -> str:
-    style = (cfg.get("question_style") or "scenario").lower()
-    return {
-        "scenario": "Questions must be scenario/case-based, testing application and analysis in practical situations.",
-        "application": "Questions must test applied problem-solving (what happens if X changes or how to implement Y).",
-        "conceptual": "Questions must test understanding of the core concepts, mechanisms, and principles.",
-        "mixed": "Mix scenario-based, applied, and conceptual questions across the lesson.",
-    }.get(style, "Questions must be scenario/case-based, testing application and analysis.")
 
 
 def _blooms_instruction(blooms_level: str) -> str:
@@ -735,7 +724,6 @@ async def _generate_mcq_deck(
         f"for the uploaded document, producing EXACTLY {total_questions} questions corresponding to the "
         "lesson roadmap below.\n\n"
         f"--- LESSON ROADMAP ({total_questions} Questions Total) ---\n"
-        f"Global Style: {_style_instruction(cfg)}\n\n"
         + "\n\n".join(slot_directives) +
         "\n\n--- GENERAL REQUIREMENTS FOR EVERY QUESTION ---\n"
         "1. Strict Document Grounding: Every fact, premise, answer, and distractor must be strictly grounded in the source document. Never invent unsupported facts.\n"
@@ -1136,9 +1124,23 @@ def _get_lock():
     return _graph_lock
 
 
+_CHECKPOINTER_POOL: Optional[Any] = None
+
+async def close_checkpointer_pool():
+    """Gracefully terminates the LangGraph psycopg connection pool on shutdown."""
+    global _CHECKPOINTER_POOL, _GRAPH
+    if _CHECKPOINTER_POOL is not None:
+        try:
+            logger.info("Closing LangGraph psycopg connection pool...")
+            await _CHECKPOINTER_POOL.close()
+        except Exception as e:
+            logger.warning(f"Error closing checkpointer pool: {e}")
+        _CHECKPOINTER_POOL = None
+        _GRAPH = None
+
 async def get_graph():
     """Returns the compiled graph with a durable Postgres checkpointer."""
-    global _GRAPH
+    global _GRAPH, _CHECKPOINTER_POOL
     if _GRAPH is not None:
         return _GRAPH
     from app.config import settings
@@ -1161,6 +1163,7 @@ async def get_graph():
                     max_idle_sec=30.0,
                 )
                 await pool.open(wait=True)
+                _CHECKPOINTER_POOL = pool
                 checkpointer = AsyncPostgresSaver(pool)
                 await checkpointer.setup()
                 _GRAPH = build_pedagogical_graph().compile(checkpointer=checkpointer)
@@ -1220,7 +1223,7 @@ async def start_pedagogical_pipeline(
     except Exception as e:
         logger.error(f"Pedagogical pipeline crashed for {session_id}: {e}", exc_info=True)
         try:
-            await execute("UPDATE sessions SET status = 'failed', updated_at = NOW() WHERE id = $1", session_id)
+            await execute("UPDATE sessions SET status = 'failed', updated_at = NOW() WHERE id = $1::uuid", session_id)
         except Exception:
             pass
         raise
@@ -1283,13 +1286,13 @@ async def get_pedagogical_state(session_id: str) -> dict:
 
     # DB fallback
     try:
-        row = await query_row("SELECT * FROM pedagogical_sessions WHERE session_id = $1", session_id)
+        row = await query_row("SELECT * FROM pedagogical_sessions WHERE session_id = $1::uuid", session_id)
     except Exception as e:
         logger.warning(f"DB fallback unavailable: {e}")
         return {"status": "not_found"}
     if not row:
         return {"status": "not_found"}
-    summary_row = await query_row("SELECT summary FROM summary_report WHERE session_id = $1", session_id)
+    summary_row = await query_row("SELECT summary FROM summary_report WHERE session_id = $1::uuid", session_id)
     db_mcq = json.loads(row["current_mcq"]) if row["current_mcq"] else None
     db_queue = json.loads(row["mcq_queue"]) if row.get("mcq_queue") else []
     deck_public = [_public_mcq(m) for m in db_queue if m]
@@ -1333,7 +1336,7 @@ async def get_internal_current_mcq(session_id: str) -> Optional[Dict[str, Any]]:
         logger.debug(f"graph.aget_state failed in get_internal_current_mcq: {e}")
 
     try:
-        row = await query_row("SELECT current_mcq FROM pedagogical_sessions WHERE session_id = $1", session_id)
+        row = await query_row("SELECT current_mcq FROM pedagogical_sessions WHERE session_id = $1::uuid", session_id)
         if row and row["current_mcq"]:
             return json.loads(row["current_mcq"])
     except Exception as e:

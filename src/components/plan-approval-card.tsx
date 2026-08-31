@@ -44,13 +44,6 @@ const difficultyLabel: Record<string, string> = {
   advanced: "Advanced",
 };
 
-const styleLabel: Record<string, string> = {
-  scenario: "Scenario-based",
-  application: "Applied problem solving",
-  conceptual: "Conceptual",
-  mixed: "Mixed styles",
-};
-
 const QUICK_SUGGESTIONS = [
   "Make questions more advanced",
   "Add practical scenario questions",
@@ -241,9 +234,6 @@ export function PlanApprovalCard({
             </span>
             <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-white/10 border border-white/15 text-slate-200">
               {difficultyLabel[quizConfig.difficulty] ?? quizConfig.difficulty}
-            </span>
-            <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-white/10 border border-white/15 text-slate-200">
-              {styleLabel[quizConfig.question_style] ?? quizConfig.question_style}
             </span>
           </div>
         </div>

@@ -9,7 +9,10 @@ Covers the user-facing flow fixes:
   * learn-more returns the coaching message inside the state payload.
 
 LLM calls are mocked; the graph checkpointer is in-memory; DB sync is a no-op.
+Background tasks (approve/adjust/learn-more) run on the same event loop as the
+test, so polling GET /task/{task_id} with small sleeps lets them complete.
 """
+import asyncio
 import json
 
 import pytest
@@ -153,17 +156,34 @@ async def _boot_session(monkeypatch, session_id, plan_fail=False):
     await _start(graph, config, {
         "session_id": session_id,
         "file_uri": "file://x",
-        "quiz_config": {"total_questions": 3, "difficulty": "auto", "question_style": "scenario"},
+        "quiz_config": {"total_questions": 3, "difficulty": "auto"},
         "attempts": [],
     })
     return calls, last_plan_input
 
 
+async def _wait_task(client: AsyncClient, session_id: str, task_id: str, timeout: float = 30.0) -> dict:
+    """Poll GET /task/{task_id} until the background task reaches a terminal state."""
+    loop = asyncio.get_event_loop()
+    deadline = loop.time() + timeout
+    while True:
+        res = await client.get(f"/api/learning/{session_id}/task/{task_id}")
+        assert res.status_code == 200, res.text
+        data = res.json()
+        if data["status"] in ("done", "failed"):
+            return data
+        if loop.time() > deadline:
+            raise AssertionError(
+                f"Task {task_id} did not finish within {timeout}s (status={data['status']})"
+            )
+        await asyncio.sleep(0.05)
+
+
 @pytest.mark.asyncio
 async def test_approve_plan_adjust_returns_redrafted_state(monkeypatch):
-    """POST approve-plan with decision=adjust AWAITS the re-draft and returns
-    the NEW plan in the response body (no polling needed on the frontend)."""
-    session_id = "route-adjust"
+    """POST approve-plan (adjust) dispatches a background task; polling the
+    task + state yields the re-drafted plan (no inline 30s+ HTTP wait)."""
+    session_id = "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
     calls, last_plan_input = await _boot_session(monkeypatch, session_id)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -171,13 +191,17 @@ async def test_approve_plan_adjust_returns_redrafted_state(monkeypatch):
             f"/api/learning/{session_id}/approve-plan",
             json={"decision": "adjust", "feedback": "Simplify the first topic"},
         )
+        assert res.status_code == 200
+        body = res.json()
+        assert body["status"] == "accepted"
+        assert body["task_id"]
 
-    assert res.status_code == 200
-    body = res.json()
-    assert body["status"] == "accepted"
-    assert body["plan_status"] == "review"
-    # The new state must be present so the UI can render the re-drafted plan.
-    state = body.get("state") or {}
+        task = await _wait_task(client, session_id, body["task_id"])
+        assert task["status"] == "done"
+
+        res = await client.get(f"/api/learning/{session_id}/state")
+        assert res.status_code == 200
+        state = res.json()
     assert state.get("revision") == 1
     assert state.get("plan_status") == "review"
     assert state.get("plan") and len(state["plan"]) == 3
@@ -189,8 +213,9 @@ async def test_approve_plan_adjust_returns_redrafted_state(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_approve_plan_approve_returns_quiz_state(monkeypatch):
-    """Approving the plan AWAITS deck generation and returns the first MCQ."""
-    session_id = "route-approve"
+    """Approving the plan dispatches deck generation as a background task;
+    once done, the state carries the first MCQ."""
+    session_id = "1a2b3c4d-5e6f-4a7b-8c8d-9e0f1a2b3c4e"
     calls, _ = await _boot_session(monkeypatch, session_id)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -198,11 +223,15 @@ async def test_approve_plan_approve_returns_quiz_state(monkeypatch):
             f"/api/learning/{session_id}/approve-plan",
             json={"decision": "approve"},
         )
+        assert res.status_code == 200
+        body = res.json()
+        task = await _wait_task(client, session_id, body["task_id"])
+        assert task["status"] == "done"
 
-    assert res.status_code == 200
-    body = res.json()
-    assert body["plan_status"] == "approved"
-    state = body.get("state") or {}
+        res = await client.get(f"/api/learning/{session_id}/state")
+        assert res.status_code == 200
+        state = res.json()
+    assert state.get("plan_status") == "approved"
     assert state.get("current_mcq") is not None
     pending = state.get("pending_interrupt") or {}
     assert pending.get("type") == "quiz"
@@ -210,9 +239,10 @@ async def test_approve_plan_approve_returns_quiz_state(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_approve_plan_failure_returns_502(monkeypatch):
-    """A failed re-draft must surface as an error - never a silent stale plan."""
-    session_id = "route-fail"
+async def test_approve_plan_failure_surfaces_task_error(monkeypatch):
+    """A failed re-draft must surface via the task record - never a silent
+    stale plan and never a proxy timeout."""
+    session_id = "2a3b4c5d-6e7f-4a8b-8c9d-9e0f1a2b3c4f"
     calls, _ = await _boot_session(monkeypatch, session_id, plan_fail=True)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -220,16 +250,18 @@ async def test_approve_plan_failure_returns_502(monkeypatch):
             f"/api/learning/{session_id}/approve-plan",
             json={"decision": "adjust", "feedback": "Simplify this topic"},
         )
-
-    assert res.status_code == 502
-    # App-wide error format: {"error": "..."} (Next.js frontend parity)
-    assert "error" in res.json()
+        assert res.status_code == 200
+        body = res.json()
+        task = await _wait_task(client, session_id, body["task_id"])
+    assert task["status"] == "failed"
+    assert "Gemini rate limited" in task["error"]
 
 
 @pytest.mark.asyncio
 async def test_learn_more_returns_state_with_coaching_message(monkeypatch):
-    """learn-more AWAITS the coach and returns the message via state."""
-    session_id = "route-learnmore"
+    """learn-more runs as a background task; the coaching message lands in
+    state once the task completes."""
+    session_id = "3a4b5c6d-7e8f-4a9b-8c0d-9e0f1a2b3c50"
     calls, _ = await _boot_session(monkeypatch, session_id)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -239,15 +271,58 @@ async def test_learn_more_returns_state_with_coaching_message(monkeypatch):
             json={"decision": "approve"},
         )
         assert res.status_code == 200
+        task = await _wait_task(client, session_id, res.json()["task_id"])
+        assert task["status"] == "done"
 
         res = await client.post(
             f"/api/learning/{session_id}/learn-more",
             json={"question": "why does attention scale quadratically?"},
         )
+        assert res.status_code == 200
+        body = res.json()
+        assert body["status"] == "accepted"
+        assert body["task_id"]
+        task = await _wait_task(client, session_id, body["task_id"])
+        assert task["status"] == "done"
+
+        res = await client.get(f"/api/learning/{session_id}/state")
+        assert res.status_code == 200
+        state = res.json()
+    assert state.get("coaching_message") == TEACH_RESPONSE
+    assert calls["teach"] == 1
+
+
+@pytest.mark.asyncio
+async def test_generate_quiz_endpoint(monkeypatch):
+    """POST /api/learning/{session_id}/generate triggers curriculum plan generation."""
+    session_id = "4a5b6c7d-8e9f-4a0b-8c1d-9e0f1a2b3c51"
+    async def mock_query_row(sql, *args):
+        return {
+            "id": session_id,
+            "pdf_filename": "test.pdf",
+            "file_uri": "https://gemini.api/test",
+            "gemini_file_uri": "https://gemini.api/test",
+            "status": "ready",
+        }
+    async def mock_execute(sql, *args):
+        return None
+    async def mock_submit(sid, task_type, coro):
+        class MockTask:
+            task_id = "task-gen-999"
+        return MockTask()
+
+    monkeypatch.setattr("app.routes.learning.query_row", mock_query_row)
+    monkeypatch.setattr("app.routes.learning.execute", mock_execute)
+    monkeypatch.setattr("app.routes.learning.task_registry.submit", mock_submit)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        res = await client.post(
+            f"/api/learning/{session_id}/generate",
+            json={"total_questions": 3, "difficulty": "intermediate"},
+        )
 
     assert res.status_code == 200
     body = res.json()
-    assert body["status"] == "accepted"
-    state = body.get("state") or {}
-    assert state.get("coaching_message") == TEACH_RESPONSE
-    assert calls["teach"] == 1
+    assert body["sessionId"] == session_id
+    assert body["taskId"] == "task-gen-999"
+    assert body["status"] == "generating"

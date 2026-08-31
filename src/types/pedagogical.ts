@@ -1,7 +1,6 @@
 export interface QuizConfig {
   total_questions: number;
   difficulty: "auto" | "beginner" | "intermediate" | "advanced";
-  question_style: "scenario" | "application" | "conceptual" | "mixed";
 }
 
 export interface PedagogicalObjective {

@@ -10,13 +10,22 @@ from app.schemas.common import CamelModel
 class UploadResponse(CamelModel):
     session_id: str
     gemini_file_uri: Optional[str] = None
-    task_id: Optional[str] = None
+    file_name: Optional[str] = None
+    status: str = "ready"
 
 class QuizConfig(CamelModel):
     """Learner preferences captured at upload time."""
     total_questions: int = Field(default=5, ge=2, le=25, description="Fixed question budget for the whole lesson")
     difficulty: Literal["auto", "beginner", "intermediate", "advanced"] = "auto"
-    question_style: Literal["scenario", "application", "conceptual", "mixed"] = "scenario"
+
+class GenerateQuizRequest(CamelModel):
+    total_questions: int = Field(default=5, ge=3, le=10, description="Question budget for the lesson (3 to 10)")
+    difficulty: Literal["auto", "beginner", "intermediate", "advanced"] = "auto"
+
+class GenerateQuizResponse(CamelModel):
+    session_id: str
+    task_id: str
+    status: str = "generating"
 
 # ---------------------------------------------------------------------------
 # Curriculum Planning Schemas
@@ -144,6 +153,8 @@ class LastResultSchema(CamelModel):
 __all__ = [
     "UploadResponse",
     "QuizConfig",
+    "GenerateQuizRequest",
+    "GenerateQuizResponse",
     "PlanObjectiveSchema",
     "PlanArraySchema",
     "PlanApprovalRequest",

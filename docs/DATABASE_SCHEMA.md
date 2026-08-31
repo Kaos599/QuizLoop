@@ -89,7 +89,7 @@ Maintains the server-side snapshot of the LangGraph state machine across interru
 | :--- | :--- | :--- | :--- |
 | `id` | `UUID` | `PRIMARY KEY` | Record ID. |
 | `session_id` | `UUID` | `NOT NULL, UNIQUE, FK -> sessions(id)` | Associated session ID. |
-| `quiz_config` | `JSONB` | `NULLABLE` | Configuration parameters (`total_questions`, `difficulty`, `question_style`). |
+| `quiz_config` | `JSONB` | `NULLABLE` | Configuration parameters (`total_questions`, `difficulty`). |
 | `plan` | `JSONB` | `NULLABLE` | Array of pedagogical objectives, concepts, and question budgets. |
 | `plan_status` | `VARCHAR(50)` | `DEFAULT 'drafting'` | Status (`drafting`, `review`, `approved`, `completed`). |
 | `revision` | `INTEGER` | `NOT NULL, DEFAULT 0` | Count of plan modification iterations. |

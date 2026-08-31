@@ -11,7 +11,8 @@ The QuizLoop backend provides an asynchronous, type-safe REST API built with Fas
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `POST` | `/api/upload` | Ingest PDF document and initiate pedagogical session. |
+| `POST` | `/api/upload` | Ingest and store PDF document, initialize session handle. |
+| `POST` | `/api/learning/{sessionId}/generate` | Initiate AI curriculum plan generation with customized quiz settings. |
 | `GET` | `/api/learning/{sessionId}/state` | Fetch current pedagogical state and check for approval interrupts. |
 | `POST` | `/api/learning/{sessionId}/approve-plan` | Human-in-the-Loop curriculum decision (`approve`, `adjust`, `reject`). |
 | `POST` | `/api/learning/{sessionId}/submit-mcq` | Submit student answer for deterministic evaluation. |
@@ -25,20 +26,41 @@ The QuizLoop backend provides an asynchronous, type-safe REST API built with Fas
 ## 2. Endpoint Specifications
 
 ### `POST /api/upload`
-Upload a document and initialize a new pedagogical learning session.
+Upload and store a PDF document to initialize a session handle.
 
 - **Content-Type**: `multipart/form-data`
 - **Request Parameters**:
   - `file`: `UploadFile` (PDF binary, $\le 25\text{MB}$, `%PDF` signature validated).
-  - `total_questions`: `int` (optional, default: `5`, clamped `3` to `10`).
-  - `difficulty`: `string` (optional, default: `"auto"`, options: `"easy"`, `"medium"`, `"hard"`, `"auto"`).
-  - `question_style`: `string` (optional, default: `"scenario"`, options: `"conceptual"`, `"applied"`, `"scenario"`).
 - **Response** (`200 OK`):
   ```json
   {
     "sessionId": "4a7b9e12-3c4d-5e6f-7a8b-9c0d1e2f3a4b",
     "geminiFileUri": "https://generativelanguage.googleapis.com/v1beta/files/abc123xyz",
-    "taskId": "task-789xyz"
+    "fileName": "DeepSeek_R1.pdf",
+    "status": "ready"
+  }
+  ```
+
+---
+
+### `POST /api/learning/{sessionId}/generate`
+Initiate curriculum planning and question synthesis with user-selected configuration.
+
+- **Parameters**: `sessionId` (`UUID` string in path).
+- **Content-Type**: `application/json`
+- **Request Body**:
+  ```json
+  {
+    "totalQuestions": 3,
+    "difficulty": "intermediate"
+  }
+  ```
+- **Response** (`200 OK`):
+  ```json
+  {
+    "sessionId": "4a7b9e12-3c4d-5e6f-7a8b-9c0d1e2f3a4b",
+    "taskId": "task-789xyz",
+    "status": "generating"
   }
   ```
 

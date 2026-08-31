@@ -5,7 +5,7 @@ import sys
 import os
 
 def main():
-    pdf_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "DeepSeek R1.pdf")
+    pdf_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "public", "sample-document.pdf")
     if not os.path.exists(pdf_path):
         print(f"File {pdf_path} does not exist.")
         return
@@ -21,7 +21,18 @@ def main():
     assert res.status_code == 200, "Upload failed"
 
     session_id = data.get("sessionId") or data.get("session_id")
-    print(f"\n2. Polling /api/learning/{session_id}/state for curriculum plan generation...")
+
+    print(f"\n2. Triggering Quiz Generation via POST /api/learning/{session_id}/generate for 3 questions...")
+    gen_res = requests.post(
+        f"http://localhost:8000/api/learning/{session_id}/generate",
+        json={"total_questions": 3, "difficulty": "intermediate"},
+    )
+    print("Generate Status:", gen_res.status_code)
+    gen_data = gen_res.json()
+    print("Generate Response:", json.dumps(gen_data, indent=2))
+    assert gen_res.status_code == 200, "Generate failed"
+
+    print(f"\n3. Polling /api/learning/{session_id}/state for curriculum plan generation...")
 
     for i in range(25):
         time.sleep(2)

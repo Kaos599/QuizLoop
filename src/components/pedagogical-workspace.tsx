@@ -88,7 +88,6 @@ function normalizeRaw(raw: any, sessionId: string): PedagogicalStateResponse {
     quizConfig: {
       total_questions: Number(rawConfig?.total_questions ?? rawConfig?.totalQuestions ?? 5),
       difficulty: rawConfig?.difficulty ?? "auto",
-      question_style: rawConfig?.question_style ?? rawConfig?.questionStyle ?? "scenario",
     },
     plan: viewPlan,
     revision: Number(raw.revision ?? 0),
@@ -237,6 +236,7 @@ export function PedagogicalWorkspace({ sessionId }: PedagogicalWorkspaceProps) {
   const [state, setState] = useState<PedagogicalStateResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [activeTask, setActiveTask] = useState<{ id: string; action: string } | null>(null);
 
   const pollInFlightRef = useRef(false);
   const lastStateKeyRef = useRef("");
@@ -304,65 +304,98 @@ export function PedagogicalWorkspace({ sessionId }: PedagogicalWorkspaceProps) {
     return () => clearInterval(pollInterval);
   }, [planStatus, sessionStatus, hasCurrentMCQ, hasMasterySummary, isAdjustingPlan, isApprovingPlan, fetchState]);
 
-  /* ---- plan ---- */
-  const handleApprovePlan = async () => {
-    setActionError(null);
-    setIsApprovingPlan(true);
-    setBusy(true);
-    try {
-      const res = await postJSON(`/api/learning/${sessionId}/approve-plan`, { decision: "approve" });
-      if (res?.state) {
-        setState(normalizeRaw(res.state, sessionId));
-      } else {
-        await fetchState();
+  // Poll the background task (approve/adjust/learn-more) until it resolves.
+  // The HTTP POST returns a task_id instantly, so a 30-60s LLM run can never
+  // hit a proxy/browser timeout; real failures surface via the task record.
+  const taskPollInFlightRef = useRef(false);
+
+  useEffect(() => {
+    if (!activeTask) return;
+    let cancelled = false;
+
+    const checkTask = async () => {
+      if (taskPollInFlightRef.current) return;
+      taskPollInFlightRef.current = true;
+      try {
+        const res = await fetch(`/api/learning/${sessionId}/task/${activeTask.id}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        if (data.status === "done") {
+          setActiveTask(null);
+          setIsApprovingPlan(false);
+          setIsAdjustingPlan(false);
+          await fetchState();
+        } else if (data.status === "failed") {
+          setActiveTask(null);
+          setIsApprovingPlan(false);
+          setIsAdjustingPlan(false);
+          setActionError(
+            data.error || "The request could not be completed. Please try again.",
+          );
+        }
+      } catch {
+        // transient error - keep polling
+      } finally {
+        taskPollInFlightRef.current = false;
       }
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Could not start the lesson. Please try again.");
-    } finally {
-      setIsApprovingPlan(false);
-      setBusy(false);
-    }
+    };
+
+    checkTask();
+    const pollInterval = setInterval(checkTask, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(pollInterval);
+    };
+  }, [activeTask, sessionId, fetchState]);
+
+  /* ---- plan ---- */
+  const dispatchTask = useCallback(
+    async (url: string, body: unknown, action: string) => {
+      setActionError(null);
+      setBusy(true);
+      try {
+        const res = await postJSON<{ task_id?: string; taskId?: string; state?: unknown }>(
+          url,
+          body,
+        );
+        if (res?.state) setState(normalizeRaw(res.state, sessionId));
+        const taskId = res?.task_id || res?.taskId;
+        if (taskId) {
+          setActiveTask({ id: taskId, action });
+          return;
+        }
+        await fetchState();
+      } catch (e) {
+        setActionError(e instanceof Error ? e.message : "Something went wrong. Please try again.");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [sessionId, fetchState],
+  );
+
+  const handleApprovePlan = async () => {
+    setIsApprovingPlan(true);
+    await dispatchTask(`/api/learning/${sessionId}/approve-plan`, { decision: "approve" }, "plan_approval");
   };
 
   const handleAdjustPlan = async (feedback: string) => {
-    setActionError(null);
     setIsAdjustingPlan(true);
-    setBusy(true);
-    try {
-      const res = await postJSON(`/api/learning/${sessionId}/approve-plan`, {
-        decision: "adjust",
-        feedback,
-      });
-      if (res?.state) {
-        setState(normalizeRaw(res.state, sessionId));
-      } else {
-        await fetchState();
-      }
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Could not re-draft the plan. Please try again.");
-    } finally {
-      setIsAdjustingPlan(false);
-      setBusy(false);
-    }
+    await dispatchTask(
+      `/api/learning/${sessionId}/approve-plan`,
+      { decision: "adjust", feedback },
+      "plan_approval",
+    );
   };
 
   const handleRejectAll = async () => {
-    setActionError(null);
     setIsAdjustingPlan(true);
-    setBusy(true);
-    try {
-      const res = await postJSON(`/api/learning/${sessionId}/approve-plan`, { decision: "reject_all" });
-      if (res?.state) {
-        setState(normalizeRaw(res.state, sessionId));
-      } else {
-        await fetchState();
-      }
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Could not re-draft the plan. Please try again.");
-    } finally {
-      setIsAdjustingPlan(false);
-      setBusy(false);
-    }
+    await dispatchTask(
+      `/api/learning/${sessionId}/approve-plan`,
+      { decision: "reject_all" },
+      "plan_approval",
+    );
   };
 
   /* ---- quiz ---- */
@@ -380,12 +413,7 @@ export function PedagogicalWorkspace({ sessionId }: PedagogicalWorkspaceProps) {
   };
 
   const handleLearnMore = async (question: string) => {
-    const res = await postJSON(`/api/learning/${sessionId}/learn-more`, { question });
-    if (res?.state) {
-      setState(normalizeRaw(res.state, sessionId));
-    } else {
-      await fetchState();
-    }
+    await dispatchTask(`/api/learning/${sessionId}/learn-more`, { question }, "learn_more");
   };
 
   const handleNext = async () => {
@@ -554,7 +582,24 @@ export function PedagogicalWorkspace({ sessionId }: PedagogicalWorkspaceProps) {
             </div>
           )}
 
-          {phase === 1 && !isAdjustingPlan && reviewMode && (
+          {phase === 1 && isApprovingPlan && (
+            <div className="flex flex-col items-center justify-center py-20 space-y-4 text-center animate-in fade-in duration-300">
+              <div className="w-14 h-14 rounded-2xl bg-teal-50 text-[#0D8267] border border-teal-200 flex items-center justify-center shadow-xs">
+                <Loader2 className="w-7 h-7 animate-spin text-[#0D8267]" />
+              </div>
+              <div className="space-y-1.5 max-w-sm">
+                <h2 className="text-lg font-bold text-slate-900">Generating your questions…</h2>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Crafting your complete question deck from the source document.
+                </p>
+              </div>
+              <div className="w-56">
+                <Progress value={60} className="h-1.5" />
+              </div>
+            </div>
+          )}
+
+          {phase === 1 && !isAdjustingPlan && !isApprovingPlan && reviewMode && (
             <div className="animate-in fade-in slide-in-from-bottom-3 duration-300">
               <PlanApprovalCard
                 plan={(state.pendingInterrupt as any)?.plan?.length
@@ -602,7 +647,7 @@ export function PedagogicalWorkspace({ sessionId }: PedagogicalWorkspaceProps) {
                   totalQuestions={(state.pendingInterrupt as any)?.totalQuestions ?? state.slots?.total ?? state.plan.length}
                   hintRevealed={state.hintRevealed}
                   coachingMessage={state.coachingMessage}
-                  isBusy={busy}
+                  isBusy={busy || activeTask !== null}
                   onSubmit={handleSubmitAnswer}
                   onRequestHint={handleRequestHint}
                   onLearnMore={handleLearnMore}

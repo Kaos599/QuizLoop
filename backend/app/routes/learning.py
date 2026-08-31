@@ -15,6 +15,7 @@ from app.agents.pedagogical_graph import (
     get_pedagogical_state,
     get_internal_current_mcq,
     resume_pedagogical_pipeline,
+    start_pedagogical_pipeline,
     _public_mcq,
 )
 from app.schemas.pedagogical import (
@@ -26,15 +27,28 @@ from app.schemas.pedagogical import (
     LearnMoreRequest,
     MasterySummarySchema,
     MCQItemPublic,
+    GenerateQuizRequest,
+    GenerateQuizResponse,
+    QuizConfig,
 )
 from app.services.task_registry import task_registry
-from app.db import query_row
+import uuid
+from app.db import query_row, execute
 
 logger = logging.getLogger("quizloop.api.learning")
 router = APIRouter(prefix="/api/learning", tags=["Learning"])
 
 
+def _validate_uuid(session_id: str) -> str:
+    try:
+        val = uuid.UUID(str(session_id).strip())
+        return str(val)
+    except (ValueError, AttributeError, TypeError):
+        raise HTTPException(status_code=404, detail="Invalid session identifier.")
+
+
 async def _ensure_session(session_id: str) -> dict:
+    session_id = _validate_uuid(session_id)
     state = await get_pedagogical_state(session_id)
     if state.get("status") == "not_found":
         raise HTTPException(status_code=404, detail="Session not found")
@@ -43,30 +57,94 @@ async def _ensure_session(session_id: str) -> dict:
 
 async def _read_session_row(session_id: str) -> Optional[dict]:  # noqa
     """Server-side copy of the session (contains grading answers)."""
-    return await query_row("SELECT * FROM pedagogical_sessions WHERE session_id = $1", session_id)
+    session_id = _validate_uuid(session_id)
+    return await query_row("SELECT * FROM pedagogical_sessions WHERE session_id = $1::uuid", session_id)
+
+
+@router.post("/{session_id}/generate", response_model=GenerateQuizResponse)
+async def generate_quiz(session_id: str, req: GenerateQuizRequest):
+    """Initiates pedagogical curriculum generation for an uploaded document session."""
+    session_id = _validate_uuid(session_id)
+    session_row = await query_row("SELECT * FROM sessions WHERE id = $1::uuid", session_id)
+    if not session_row:
+        raise HTTPException(status_code=404, detail="Uploaded session not found.")
+    
+    clamped_questions = max(3, min(10, req.total_questions))
+    quiz_config = QuizConfig(
+        total_questions=clamped_questions,
+        difficulty=req.difficulty,
+    )
+
+    target_doc_ref = session_row.get("gemini_file_uri") or session_row.get("file_uri")
+    pdf_filename = session_row.get("pdf_filename") or "document.pdf"
+
+    # Initialize or reset pedagogical session record
+    await execute(
+        """
+        INSERT INTO pedagogical_sessions (session_id, plan, plan_status, quiz_config)
+        VALUES ($1::uuid, '[]'::jsonb, 'drafting', $2::jsonb)
+        ON CONFLICT (session_id) DO UPDATE SET
+            plan = '[]'::jsonb,
+            plan_status = 'drafting',
+            quiz_config = EXCLUDED.quiz_config,
+            current_objective = NULL,
+            current_mcq = NULL,
+            mcq_queue = NULL,
+            slots = NULL,
+            attempts_json = '[]'::jsonb,
+            hint_revealed = FALSE,
+            coaching_message = NULL,
+            last_result = NULL,
+            revision = 0,
+            plan_cap_reached = FALSE,
+            updated_at = NOW()
+        """,
+        session_id, quiz_config.model_dump_json(by_alias=False)
+    )
+
+    await execute(
+        "UPDATE sessions SET status = 'generating', updated_at = NOW() WHERE id = $1::uuid",
+        session_id
+    )
+
+    task = await task_registry.submit(
+        session_id,
+        "plan_generation",
+        start_pedagogical_pipeline(
+            session_id,
+            target_doc_ref,
+            quiz_config=quiz_config.model_dump(by_alias=False),
+            file_name=pdf_filename,
+        ),
+    )
+
+    return GenerateQuizResponse(
+        session_id=session_id,
+        task_id=task.task_id,
+        status="generating",
+    )
 
 
 @router.post("/{session_id}/approve-plan")
 async def approve_plan(session_id: str, req: PlanApprovalRequest):
-    """Awaited HITL resume: approve/adjust/reject runs the pipeline to the next
-    interrupt (LLM included) and returns the NEW state so the frontend can
-    render the re-drafted plan without polling. Failures surface as 502."""
+    """Dispatch plan approve/adjust/reject as a background pipeline resume.
+
+    LLM re-drafting and question deck generation can take 30-60s, which blows
+    past proxy/browser timeouts when awaited inline. Returns a task_id
+    immediately; the frontend polls GET /task/{task_id} for completion and
+    GET /state for the resulting graph state.
+    """
     await _ensure_session(session_id)
-    try:
-        await resume_pedagogical_pipeline(session_id, req.model_dump(), strict=True)
-    except Exception as e:
-        logger.error(f"Plan approval/adjust failed for {session_id}: {e}", exc_info=True)
-        detail = (
-            "The lesson could not be started. Please try again."
-            if req.decision == "approve"
-            else "The plan could not be re-drafted. Please try again."
-        )
-        raise HTTPException(status_code=502, detail=detail)
-    new_state = await get_pedagogical_state(session_id)
+    record = await task_registry.submit(
+        session_id,
+        "plan_approval",
+        resume_pedagogical_pipeline(session_id, req.model_dump(), strict=True),
+    )
+    state = await get_pedagogical_state(session_id)
     return {
         "status": "accepted",
-        "plan_status": new_state.get("plan_status"),
-        "state": new_state,
+        "task_id": record.task_id,
+        "plan_status": state.get("plan_status"),
     }
 
 
@@ -98,7 +176,7 @@ async def submit_mcq(session_id: str, req: SubmitMCQRequest):
 
     # Advance the graph synchronously - queue pop only, no LLM in the
     # normal path (deck was pre-generated at plan approval).
-    await resume_pedagogical_pipeline(session_id, {"action": "answer", "letter": letter})
+    await resume_pedagogical_pipeline(session_id, {"action": "answer", "letter": letter}, strict=True)
 
     # Read the (possibly advanced) internal question and expose it publicly.
     next_mcq = await get_internal_current_mcq(session_id)
@@ -137,18 +215,19 @@ async def get_hint(session_id: str, req: HintRequest = None):  # type: ignore[as
 @router.post("/{session_id}/learn-more")
 async def learn_more(session_id: str, req: LearnMoreRequest):
     """Ask the coach to explain the underlying concept - answer is never given.
-    Awaited: the response carries the NEW state so the coaching message renders
-    immediately without polling."""
+
+    Runs as a background resume (the coaching LLM call can take 20-40s); the
+    frontend polls the task + state so the coaching message renders when ready.
+    """
     await _ensure_session(session_id)
-    try:
-        await resume_pedagogical_pipeline(
+    record = await task_registry.submit(
+        session_id,
+        "learn_more",
+        resume_pedagogical_pipeline(
             session_id, {"action": "learn_more", "question": req.question}, strict=True
-        )
-    except Exception as e:
-        logger.error(f"Learn-more failed for {session_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=502, detail="The coach could not answer right now. Please try again.")
-    new_state = await get_pedagogical_state(session_id)
-    return {"status": "accepted", "state": new_state}
+        ),
+    )
+    return {"status": "accepted", "task_id": record.task_id}
 
 
 @router.get("/{session_id}/state")
@@ -164,7 +243,7 @@ async def get_mastery_report(session_id: str):
     summary = state.get("summary")
 
     if not summary:
-        row = await query_row("SELECT summary FROM summary_report WHERE session_id = $1", session_id)
+        row = await query_row("SELECT summary FROM summary_report WHERE session_id = $1::uuid", session_id)
         if row and row.get("summary"):
             summary = json.loads(row["summary"]) if isinstance(row["summary"], str) else row["summary"]
 
