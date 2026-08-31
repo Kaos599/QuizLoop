@@ -1,22 +1,22 @@
 import os
 import uuid
 import tempfile
-import asyncio
+import time
+import re
 import logging
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, status
 import puremagic
 from app.services.supabase_storage import upload_pdf_to_supabase
 from app.services.gemini_file_service import upload_file_to_gemini
 from app.agents.pedagogical_graph import start_pedagogical_pipeline
 from app.services.task_registry import task_registry
-from app.schemas.interactive import UploadResponse
-from app.schemas.pedagogical import QuizConfig
-from app.db import execute, query_row
+from app.schemas.pedagogical import UploadResponse, QuizConfig
+from app.db import execute
 
 logger = logging.getLogger("quizloop.routes.upload")
 router = APIRouter(prefix="/api", tags=["upload"])
 
-MAX_FILE_SIZE = 26214400 # 25MB
+MAX_FILE_SIZE = 26214400  # 25MB
 
 async def validate_pdf_file(file: UploadFile) -> bytes:
     content = await file.read()
@@ -40,8 +40,6 @@ async def upload_quiz_pdf(
     difficulty: str = Form("auto"),
     question_style: str = Form("scenario"),
 ):
-    import time
-    import re
     content = await validate_pdf_file(file)
     clean_filename = re.sub(r'[^a-zA-Z0-9._-]', '_', file.filename or 'document.pdf')
     unique_file_id = f"{int(time.time())}_{uuid.uuid4().hex[:8]}_{clean_filename}"
@@ -119,46 +117,3 @@ async def upload_quiz_pdf(
             except Exception:
                 pass
 
-@router.post("/interactive/upload", response_model=UploadResponse)
-async def upload_interactive_pdf(file: UploadFile = File(...)):
-    content = await validate_pdf_file(file)
-    safe_name = f"{int(asyncio.get_event_loop().time() * 1000)}-{file.filename or 'interactive.pdf'}"
-    
-    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
-        tmp.write(content)
-        tmp_path = tmp.name
-
-    try:
-        # 1. Upload to Supabase Storage
-        supabase_url = await upload_pdf_to_supabase(safe_name, content)
-        
-        # 2. Upload to Gemini File API (or fallback to supabase_url)
-        gemini_uri = await upload_file_to_gemini(tmp_path, "application/pdf")
-        target_doc_ref = gemini_uri if (gemini_uri and gemini_uri.startswith("https://generativelanguage.googleapis.com")) else supabase_url
-        
-        # 3. Create DB Sessions
-        session_id = str(uuid.uuid4())
-        await execute(
-            """
-            INSERT INTO sessions (id, pdf_filename, file_uri, gemini_file_uri, status) 
-            VALUES ($1, $2, $3, $4, 'interactive_generation')
-            """,
-            session_id, file.filename, supabase_url, target_doc_ref
-        )
-        
-        await execute(
-            """
-            INSERT INTO interactive_sessions (session_id, master_plan, current_phase, progress_percent) 
-            VALUES ($1, '[]'::jsonb, 'PENDING', 0)
-            """,
-            session_id
-        )
-
-        # 4. Spawn background multi-agent LangGraph pipeline
-        asyncio.create_task(start_pedagogical_pipeline(session_id, target_doc_ref))
-        
-        return UploadResponse(session_id=session_id, gemini_file_uri=target_doc_ref)
-
-    finally:
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)

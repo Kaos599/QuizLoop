@@ -20,8 +20,12 @@ from app.agents.pedagogical_graph import (
 from app.schemas.pedagogical import (
     PlanApprovalRequest,
     SubmitMCQRequest,
+    SubmitMCQResponse,
     HintRequest,
+    HintResponse,
     LearnMoreRequest,
+    MasterySummarySchema,
+    MCQItemPublic,
 )
 from app.services.task_registry import task_registry
 from app.db import query_row
@@ -66,7 +70,7 @@ async def approve_plan(session_id: str, req: PlanApprovalRequest):
     }
 
 
-@router.post("/{session_id}/submit-mcq")
+@router.post("/{session_id}/submit-mcq", response_model=SubmitMCQResponse)
 async def submit_mcq(session_id: str, req: SubmitMCQRequest):
     """Grade instantly against the server-side copy, then let the graph
     progress (verdict + feedback are deterministic - no wait on LLM).
@@ -103,23 +107,19 @@ async def submit_mcq(session_id: str, req: SubmitMCQRequest):
         # Same question (incorrect attempt) - nothing new to hand over.
         next_mcq_public = None
 
-    return {
-        "status": "accepted",
-        "verdict": "correct" if is_correct else "incorrect",
-        "selected_letter": letter,
-        "selectedLetter": letter,
-        "diagnostic_feedback": diagnostic_feedback,
-        "diagnosticFeedback": diagnostic_feedback,
-        "explanation": mcq.get("explanation", ""),
-        "hint": mcq.get("hint", ""),
-        "key_takeaway": mcq.get("key_takeaway", ""),
-        "keyTakeaway": mcq.get("key_takeaway", ""),
-        "next_mcq": next_mcq_public,
-        "nextMCQ": next_mcq_public,
-    }
+    return SubmitMCQResponse(
+        status="accepted",
+        verdict="correct" if is_correct else "incorrect",
+        selected_letter=letter,
+        diagnostic_feedback=diagnostic_feedback,
+        explanation=mcq.get("explanation", ""),
+        hint=mcq.get("hint", ""),
+        key_takeaway=mcq.get("key_takeaway", ""),
+        next_mcq=MCQItemPublic(**next_mcq_public) if next_mcq_public else None,
+    )
 
 
-@router.post("/{session_id}/hint")
+@router.post("/{session_id}/hint", response_model=HintResponse)
 async def get_hint(session_id: str, req: HintRequest = None):  # type: ignore[assignment]
     """Reveal the hint on demand (no spoiler). Marks hint_revealed in graph state."""
     if req is None:
@@ -131,7 +131,7 @@ async def get_hint(session_id: str, req: HintRequest = None):  # type: ignore[as
         "request_hint",
         resume_pedagogical_pipeline(session_id, {"action": "hint"}),
     )
-    return {"status": "accepted", "task_id": record.task_id, "hint": mcq.get("hint", "")}
+    return HintResponse(status="accepted", task_id=record.task_id, hint=mcq.get("hint", ""))
 
 
 @router.post("/{session_id}/learn-more")
@@ -155,6 +155,31 @@ async def learn_more(session_id: str, req: LearnMoreRequest):
 async def get_state(session_id: str):
     # Fast path (no LLM): return the public state.
     return await _ensure_session(session_id)
+
+
+@router.get("/{session_id}/report", response_model=MasterySummarySchema)
+async def get_mastery_report(session_id: str):
+    """Fetch the final Bloom's mastery report card. Returns 409 if session is still active."""
+    state = await _ensure_session(session_id)
+    summary = state.get("summary")
+
+    if not summary:
+        row = await query_row("SELECT summary FROM summary_report WHERE session_id = $1", session_id)
+        if row and row.get("summary"):
+            summary = json.loads(row["summary"]) if isinstance(row["summary"], str) else row["summary"]
+
+    if not summary:
+        if state.get("plan_status") != "completed":
+            raise HTTPException(
+                status_code=409,
+                detail="Mastery report is not ready. Complete the learning session first.",
+            )
+        raise HTTPException(
+            status_code=404,
+            detail="Mastery report not found for this session.",
+        )
+
+    return summary
 
 
 @router.get("/{session_id}/task/{task_id}")

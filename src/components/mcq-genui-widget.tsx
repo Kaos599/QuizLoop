@@ -116,7 +116,7 @@ export function MCQGenUIWidget({
           explanation: res.explanation,
           keyTakeaway: res.keyTakeaway || res.key_takeaway,
         });
-        const nextQ = res.nextMCQ || res.next_mcq;
+        const nextQ = res.nextMCQ || res.nextMcq || res.next_mcq;
         setPendingNext(nextQ || null);
       } else {
         setVerdict("incorrect");

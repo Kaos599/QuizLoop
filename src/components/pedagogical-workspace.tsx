@@ -60,32 +60,39 @@ function toView(o: any): PlanObjectiveView {
 }
 
 function normalizeRaw(raw: any, sessionId: string): PedagogicalStateResponse {
-  const viewPlan: PlanObjectiveView[] = Array.isArray(raw.plan) ? raw.plan.map(toView) : null;
-  const pending = raw.pending_interrupt || null;
+  const rawPlan = raw.plan || [];
+  const viewPlan: PlanObjectiveView[] = Array.isArray(rawPlan) ? rawPlan.map(toView) : [];
+  const pending = raw.pending_interrupt || raw.pendingInterrupt || null;
 
-  const perObjective = Array.isArray(raw.summary?.per_objective)
-    ? raw.summary.per_objective.map((r: any) => ({
-        objectiveId: r.objective_id,
-        title: r.title,
+  const rawSummary = raw.summary || raw.masterySummary;
+  const rawPerObjective = rawSummary?.per_objective || rawSummary?.perObjective;
+  const perObjective = Array.isArray(rawPerObjective)
+    ? rawPerObjective.map((r: any) => ({
+        objectiveId: r.objective_id || r.objectiveId || "",
+        title: r.title || "",
         passed: Boolean(r.passed),
         attempts: Number(r.attempts ?? 0),
-        firstTry: Boolean(r.first_try),
+        firstTry: Boolean(r.first_try ?? r.firstTry),
         comment: r.comment || "",
       }))
     : undefined;
 
+  const rawConfig = raw.quiz_config || raw.quizConfig;
+  const rawMcq = raw.current_mcq || raw.currentMCQ || raw.currentMcq;
+  const rawLastResult = raw.last_result || raw.lastResult;
+
   return {
-    sessionId: raw.session_id || sessionId,
+    sessionId: raw.session_id || raw.sessionId || sessionId,
     status: (raw.status || "planning") as PedagogicalStateResponse["status"],
-    planStatus: (raw.plan_status || "drafting") as PedagogicalStateResponse["planStatus"],
+    planStatus: (raw.plan_status || raw.planStatus || "drafting") as PedagogicalStateResponse["planStatus"],
     quizConfig: {
-      total_questions: Number(raw.quiz_config?.total_questions ?? 5),
-      difficulty: raw.quiz_config?.difficulty ?? "auto",
-      question_style: raw.quiz_config?.question_style ?? "scenario",
+      total_questions: Number(rawConfig?.total_questions ?? rawConfig?.totalQuestions ?? 5),
+      difficulty: rawConfig?.difficulty ?? "auto",
+      question_style: rawConfig?.question_style ?? rawConfig?.questionStyle ?? "scenario",
     },
-    plan: viewPlan || [],
+    plan: viewPlan,
     revision: Number(raw.revision ?? 0),
-    planCapReached: Boolean(raw.plan_cap_reached),
+    planCapReached: Boolean(raw.plan_cap_reached ?? raw.planCapReached),
     slots: raw.slots
       ? {
           total: Number(raw.slots.total ?? 0),
@@ -93,37 +100,37 @@ function normalizeRaw(raw: any, sessionId: string): PedagogicalStateResponse {
           index: Number(raw.slots.index ?? 1),
         }
       : null,
-    currentObjectiveId: raw.current_objective?.id,
-    currentMCQ: raw.current_mcq
+    currentObjectiveId: raw.current_objective?.id || raw.currentObjective?.id || raw.currentObjectiveId,
+    currentMCQ: rawMcq
       ? {
-          question: raw.current_mcq.question || raw.current_mcq.scenario || "",
-          scenario: raw.current_mcq.scenario,
-          options: (raw.current_mcq.options || []).map((o: any) => ({
+          question: rawMcq.question || rawMcq.scenario || "",
+          scenario: rawMcq.scenario,
+          options: (rawMcq.options || []).map((o: any) => ({
             letter: o.letter || o.id || "",
             text: o.text || "",
           })),
-          hint: raw.current_mcq.hint,
+          hint: rawMcq.hint,
         }
       : undefined,
-    hintRevealed: Boolean(raw.hint_revealed),
-    coachingMessage: raw.coaching_message ?? null,
-    lastResult: raw.last_result
+    hintRevealed: Boolean(raw.hint_revealed ?? raw.hintRevealed),
+    coachingMessage: raw.coaching_message ?? raw.coachingMessage ?? null,
+    lastResult: rawLastResult
       ? {
-          verdict: raw.last_result.verdict,
-          explanation: raw.last_result.explanation,
-          hint: raw.last_result.hint,
-          diagnosticFeedback: raw.last_result.diagnostic_feedback,
-          keyTakeaway: raw.last_result.key_takeaway,
-          attemptNo: raw.last_result.attempt_no,
-          selectedLetter: raw.last_result.selected_letter,
+          verdict: rawLastResult.verdict,
+          explanation: rawLastResult.explanation,
+          hint: rawLastResult.hint,
+          diagnosticFeedback: rawLastResult.diagnostic_feedback || rawLastResult.diagnosticFeedback,
+          keyTakeaway: rawLastResult.key_takeaway || rawLastResult.keyTakeaway,
+          attemptNo: rawLastResult.attempt_no || rawLastResult.attemptNo,
+          selectedLetter: rawLastResult.selected_letter || rawLastResult.selectedLetter,
         }
       : undefined,
     attempts: (raw.attempts || []).map((a: any) => ({
-      objectiveId: a.objective_id,
-      slotNo: Number(a.slot_no ?? 0),
-      selectedLetter: a.selected_letter,
-      isCorrect: Boolean(a.is_correct),
-      attemptNo: Number(a.attempt_no ?? 1),
+      objectiveId: a.objective_id || a.objectiveId || "",
+      slotNo: Number(a.slot_no ?? a.slotNo ?? 0),
+      selectedLetter: a.selected_letter || a.selectedLetter,
+      isCorrect: Boolean(a.is_correct ?? a.isCorrect),
+      attemptNo: Number(a.attempt_no ?? a.attemptNo ?? 1),
       ts: Number(a.ts ?? 0),
     })),
     questionsDeck: Array.isArray(raw.questions_deck || raw.questionsDeck)
@@ -137,15 +144,15 @@ function normalizeRaw(raw: any, sessionId: string): PedagogicalStateResponse {
           hint: m.hint,
         }))
       : undefined,
-    masterySummary: raw.summary
+    masterySummary: rawSummary
       ? {
-          accuracy: Number(raw.summary.accuracy ?? 0),
-          firstTryCorrect: Number(raw.summary.first_try_correct ?? 0),
-          totalAttempts: Number(raw.summary.total_attempts ?? 0),
+          accuracy: Number(rawSummary.accuracy ?? 0),
+          firstTryCorrect: Number(rawSummary.first_try_correct ?? rawSummary.firstTryCorrect ?? 0),
+          totalAttempts: Number(rawSummary.total_attempts ?? rawSummary.totalAttempts ?? 0),
           perObjective: perObjective || [],
-          strengths: raw.summary.strengths || [],
-          areasForReview: raw.summary.areas_for_review || [],
-          personalizedStudyTips: raw.summary.personalized_study_tips || [],
+          strengths: rawSummary.strengths || [],
+          areasForReview: rawSummary.areas_for_review || rawSummary.areasForReview || [],
+          personalizedStudyTips: rawSummary.personalized_study_tips || rawSummary.personalizedStudyTips || [],
         }
       : undefined,
     pendingInterrupt: pending
@@ -155,15 +162,15 @@ function normalizeRaw(raw: any, sessionId: string): PedagogicalStateResponse {
           prompt: pending.prompt,
           options: pending.options,
           revision: Number(pending.revision ?? 0),
-          capReached: Boolean(pending.cap_reached),
-          maxRevisions: pending.max_revisions,
+          capReached: Boolean(pending.cap_reached ?? pending.capReached),
+          maxRevisions: pending.max_revisions ?? pending.maxRevisions,
           ...(pending.type === "quiz"
             ? {
                 questionIndex:
-                  Number(pending.question_index ?? 1) <= 0
+                  Number(pending.question_index ?? pending.questionIndex ?? 1) <= 0
                     ? 1
-                    : Number(pending.question_index ?? 1),
-                totalQuestions: Number(pending.total_questions ?? 0),
+                    : Number(pending.question_index ?? pending.questionIndex ?? 1),
+                totalQuestions: Number(pending.total_questions ?? pending.totalQuestions ?? 0),
                 objective: pending.objective ? toView(pending.objective) : ({} as PlanObjectiveView),
                 mcq: pending.mcq
                   ? {
@@ -176,17 +183,17 @@ function normalizeRaw(raw: any, sessionId: string): PedagogicalStateResponse {
                       hint: pending.mcq.hint,
                     }
                   : ({} as MCQItem),
-                hintRevealed: Boolean(pending.hint_revealed),
-                coachingMessage: pending.coaching_message ?? null,
-                lastResult: pending.last_result
+                hintRevealed: Boolean(pending.hint_revealed ?? pending.hintRevealed),
+                coachingMessage: pending.coaching_message ?? pending.coachingMessage ?? null,
+                lastResult: (pending.last_result || pending.lastResult)
                   ? ({
-                      verdict: pending.last_result.verdict,
-                      explanation: pending.last_result.explanation,
-                      hint: pending.last_result.hint,
-                      diagnosticFeedback: pending.last_result.diagnostic_feedback,
-                      keyTakeaway: pending.last_result.key_takeaway,
-                      attemptNo: pending.last_result.attempt_no,
-                      selectedLetter: pending.last_result.selected_letter,
+                      verdict: (pending.last_result || pending.lastResult).verdict,
+                      explanation: (pending.last_result || pending.lastResult).explanation,
+                      hint: (pending.last_result || pending.lastResult).hint,
+                      diagnosticFeedback: (pending.last_result || pending.lastResult).diagnostic_feedback || (pending.last_result || pending.lastResult).diagnosticFeedback,
+                      keyTakeaway: (pending.last_result || pending.lastResult).key_takeaway || (pending.last_result || pending.lastResult).keyTakeaway,
+                      attemptNo: (pending.last_result || pending.lastResult).attempt_no || (pending.last_result || pending.lastResult).attemptNo,
+                      selectedLetter: (pending.last_result || pending.lastResult).selected_letter || (pending.last_result || pending.lastResult).selectedLetter,
                     } as LastResult)
                   : null,
               }

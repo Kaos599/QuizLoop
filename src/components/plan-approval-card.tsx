@@ -269,7 +269,7 @@ export function PlanApprovalCard({
             </span>
             <span className="text-xs text-slate-400">•</span>
             <span className="text-xs font-medium text-slate-500">
-              {plan.reduce((s, o) => s + o.question_count, 0)} questions total
+              {plan.reduce((s, o) => s + (o.question_count ?? o.questionCount ?? 1), 0)} questions total
             </span>
           </div>
 
@@ -366,7 +366,7 @@ export function PlanApprovalCard({
                       </div>
                       <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 shrink-0">
                         <SlidersHorizontal className="w-3 h-3" />
-                        {obj.question_count} question{obj.question_count === 1 ? "" : "s"}
+                        {obj.question_count ?? obj.questionCount ?? 1} question{(obj.question_count ?? obj.questionCount ?? 1) === 1 ? "" : "s"}
                       </span>
                     </div>
                     <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
@@ -383,7 +383,7 @@ export function PlanApprovalCard({
                           bloomsBadgeColors[bloomsKey] || "bg-slate-100 text-slate-800 border-slate-200"
                         )}
                       >
-                        Level: {obj.blooms_level}
+                        Level: {obj.blooms_level || obj.bloomsLevel || "Apply"}
                       </span>
                       <span
                         className={cn(

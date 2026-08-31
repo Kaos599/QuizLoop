@@ -95,9 +95,11 @@ export interface PlanObjectiveView {
   id: string;
   title: string;
   description: string;
-  blooms_level: string;
+  blooms_level?: string;
+  bloomsLevel?: string;
   difficulty: string;
-  question_count: number;
+  question_count?: number;
+  questionCount?: number;
   status?: string;
 }
 
@@ -145,5 +147,7 @@ export interface SubmitAnswerResponse {
    *  the frontend never polls for it. Present only when the answer was
    *  correct and the deck has more questions. */
   nextMCQ?: MCQItem;
+  nextMcq?: MCQItem;
   next_mcq?: MCQItem;
 }
+

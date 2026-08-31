@@ -32,6 +32,7 @@ from langgraph.types import interrupt, Command
 from app.agents.gemini_client import generate_gemini_content
 from app.services.gemini_file_service import get_gemini_part_for_file
 from app.db import execute, query_row
+from app.schemas.pedagogical import PlanArraySchema, MCQBatchSchema, MasterySummarySchema
 
 logger = logging.getLogger("quizloop.pedagogical")
 flow_logger = logging.getLogger("quizloop.prompts_and_flows")
@@ -225,7 +226,7 @@ async def _sync_state_to_db(state: Dict[str, Any]) -> None:
         return
     public = serialize_public_state(state)
     mcq_queue = state.get("mcq_queue")
-    db_mcq_queue = json.dumps([_db_mcq(m) for m in mcq_queue]) if mcq_queue else None
+    db_mcq_queue = json.dumps([_db_mcq(m) for m in mcq_queue if m is not None]) if mcq_queue else None
     try:
         await execute(
             """
@@ -294,58 +295,24 @@ async def _sync_state_to_db(state: Dict[str, Any]) -> None:
 
 
 # ---------------------------------------------------------------------------
-# LLM schema helpers
+# LLM Response Unpackers & Helpers
 # ---------------------------------------------------------------------------
 
-def _plan_schema(total_questions: int) -> Dict[str, Any]:
-    return {
-        "type": "ARRAY",
-        "items": {
-            "type": "OBJECT",
-            "properties": {
-                "id": {"type": "STRING"},
-                "title": {"type": "STRING"},
-                "description": {"type": "STRING"},
-                "blooms_level": {"type": "STRING", "enum": ["Understand", "Apply", "Analyze", "Evaluate"]},
-                "difficulty": {"type": "STRING", "enum": ["Beginner", "Intermediate", "Advanced"]},
-                "question_count": {"type": "INTEGER", "default": 1},
-                "key_concepts": {"type": "ARRAY", "items": {"type": "STRING"}},
-            },
-            "required": ["title", "description", "blooms_level", "difficulty", "question_count", "key_concepts"],
-        },
-    }
-
-
-def _mcq_batch_schema() -> Dict[str, Any]:
-    return {
-        "type": "ARRAY",
-        "items": {
-            "type": "OBJECT",
-            "properties": {
-                "objective_id": {"type": "STRING"},
-                "slot_no": {"type": "INTEGER"},
-                "scenario": {"type": "STRING"},
-                "question": {"type": "STRING"},
-                "options": {
-                    "type": "ARRAY",
-                    "items": {
-                        "type": "OBJECT",
-                        "properties": {
-                            "letter": {"type": "STRING"},
-                            "text": {"type": "STRING"},
-                            "is_correct": {"type": "BOOLEAN"},
-                            "diagnostic_feedback": {"type": "STRING"},
-                        },
-                        "required": ["letter", "text", "is_correct", "diagnostic_feedback"],
-                    },
-                },
-                "explanation": {"type": "STRING"},
-                "hint": {"type": "STRING"},
-                "key_takeaway": {"type": "STRING"},
-            },
-            "required": ["scenario", "question", "options", "explanation", "hint", "key_takeaway"],
-        },
-    }
+def _extract_items_from_json(resp_text: str, fallback_keys: tuple = ("objectives", "questions", "items", "plan", "summary")) -> Any:
+    """Defensively unpacks Gemini responses supporting both naked JSON arrays and Pydantic-wrapped dicts."""
+    try:
+        data = json.loads(resp_text)
+    except Exception as e:
+        logger.error(f"JSON decode failed on Gemini response: {e}\nResponse text: {resp_text}")
+        raise RuntimeError(f"Model returned invalid JSON: {e}")
+    if isinstance(data, list):
+        return data
+    if isinstance(data, dict):
+        for key in fallback_keys:
+            if key in data and isinstance(data[key], (list, dict)):
+                return data[key]
+        return data
+    return []
 
 
 def _normalize_mcq_item(mcq: Dict[str, Any], slot: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -362,37 +329,6 @@ def _normalize_mcq_item(mcq: Dict[str, Any], slot: Optional[Dict[str, Any]] = No
         if options:
             options[0]["is_correct"] = True
     return item
-
-
-def _summary_schema() -> Dict[str, Any]:
-    return {
-        "type": "OBJECT",
-        "properties": {
-            "accuracy": {"type": "NUMBER"},
-            "first_try_correct": {"type": "INTEGER"},
-            "total_attempts": {"type": "INTEGER"},
-            "per_objective": {
-                "type": "ARRAY",
-                "items": {
-                    "type": "OBJECT",
-                    "properties": {
-                        "objective_id": {"type": "STRING"},
-                        "title": {"type": "STRING"},
-                        "passed": {"type": "BOOLEAN"},
-                        "attempts": {"type": "INTEGER"},
-                        "first_try": {"type": "BOOLEAN"},
-                        "comment": {"type": "STRING"},
-                    },
-                    "required": ["objective_id", "title", "passed", "attempts", "first_try", "comment"],
-                },
-            },
-            "strengths": {"type": "ARRAY", "items": {"type": "STRING"}},
-            "areas_for_review": {"type": "ARRAY", "items": {"type": "STRING"}},
-            "personalized_study_tips": {"type": "ARRAY", "items": {"type": "STRING"}},
-        },
-        "required": ["accuracy", "first_try_correct", "total_attempts", "per_objective",
-                     "strengths", "areas_for_review", "personalized_study_tips"],
-    }
 
 
 def _difficulty_instruction(cfg: Dict[str, Any]) -> str:
@@ -514,13 +450,13 @@ async def plan_node(state: PedagogicalState) -> Dict[str, Any]:
 
     resp_text = await generate_gemini_content(
         contents=[file_part, instruction],
-        system_instruction="You are a curriculum architect. Respond only with the JSON plan array.",
-        response_schema=_plan_schema(total_questions),
+        system_instruction="You are a curriculum architect. Respond only with the JSON plan conforming to the schema.",
+        response_schema=PlanArraySchema,
         thinking_budget=0,
         session_id=state["session_id"],
         node_name="plan_generation",
     )
-    raw_plan = json.loads(resp_text)
+    raw_plan = _extract_items_from_json(resp_text, fallback_keys=("objectives", "plan", "items"))
     if not isinstance(raw_plan, list) or len(raw_plan) == 0:
         raise RuntimeError("Plan generation returned an empty plan.")
 
@@ -721,13 +657,16 @@ async def simplify_plan_node(state: PedagogicalState) -> Dict[str, Any]:
     file_part = await get_gemini_part_for_file(state["file_uri"])
     resp_text = await generate_gemini_content(
         contents=[file_part, "Produce the simplified plan JSON."],
-        system_instruction="Respond only with the JSON plan array.",
-        response_schema=_plan_schema(total_questions),
+        system_instruction="Respond only with the JSON plan conforming to the schema.",
+        response_schema=PlanArraySchema,
         thinking_budget=0,
         session_id=state["session_id"],
         node_name="plan_simplify",
     )
-    raw_plan = json.loads(resp_text)[:3]
+    raw_plan = _extract_items_from_json(resp_text, fallback_keys=("objectives", "plan", "items"))
+    if not isinstance(raw_plan, list) or len(raw_plan) == 0:
+        raise RuntimeError("Simplify plan returned an empty plan.")
+    raw_plan = raw_plan[:3]
 
     budget = _distribute_question_budget(raw_plan, total_questions)
     plan = []
@@ -801,11 +740,11 @@ async def _generate_mcq_deck(
         "\n\n--- GENERAL REQUIREMENTS FOR EVERY QUESTION ---\n"
         "1. Strict Document Grounding: Every fact, premise, answer, and distractor must be strictly grounded in the source document. Never invent unsupported facts.\n"
         "2. 4 Options: Exactly 4 distinct options (A, B, C, D) with exactly ONE correct answer.\n"
-        "3. High-Quality Distractors: Distractors must reflect plausible misconceptions or common traps aligned with the specified Bloom's level and difficulty.\n"
-        "4. Non-Spoiling Hint: Write a 'hint' that offers a helpful conceptual nudge without revealing or eliminating options.\n"
+        "3. High-Quality Diagnostic Distractors: Distractors must reflect authentic misconceptions or common intuitive traps. For each distractor, write a helpful 'diagnostic_feedback' explaining why this trap fails.\n"
+        "4. Non-Spoiling Hint: Write a 'hint' that offers a helpful conceptual nudge or analogy without revealing or eliminating options.\n"
         "5. Sharp Explanation & Key Takeaway: Provide a concise explanation of why the correct answer is right and why distractors fail, plus a one-sentence memorable 'key_takeaway'.\n"
         "6. Self-Contained: Do NOT refer to 'the document', 'the text', 'section 3.2', or page numbers in the question text.\n"
-        f"7. Return a JSON array containing EXACTLY {total_questions} question objects in the exact sequential order of the questions above."
+        f"7. Return JSON conforming to the schema with EXACTLY {total_questions} question objects in the exact sequential order of the questions above."
     )
 
     file_part = await get_gemini_part_for_file(file_uri)
@@ -814,15 +753,13 @@ async def _generate_mcq_deck(
             file_part,
             instruction,
         ],
-        system_instruction="You are an expert pedagogical assessment author. Respond only with the JSON array of MCQ objects conforming to the schema.",
-        response_schema=_mcq_batch_schema(),
+        system_instruction="You are an expert pedagogical assessment author. Respond only with the JSON conforming to the schema.",
+        response_schema=MCQBatchSchema,
         thinking_budget=0,
         session_id=session_id,
         node_name="generate_mcq_batch",
     )
-    raw_mcqs = json.loads(resp_text)
-    if isinstance(raw_mcqs, dict):
-        raw_mcqs = [raw_mcqs]
+    raw_mcqs = _extract_items_from_json(resp_text, fallback_keys=("questions", "items", "mcqs"))
     if not isinstance(raw_mcqs, list) or len(raw_mcqs) == 0:
         raise RuntimeError("MCQ batch generation returned an empty result.")
 
@@ -1139,13 +1076,14 @@ async def summarize_lesson_node(state: PedagogicalState) -> Dict[str, Any]:
     )
     resp_text = await generate_gemini_content(
         contents=[instruction],
-        system_instruction="You are an academic mentor. Respond only with the JSON report.",
-        response_schema=_summary_schema(),
+        system_instruction="You are an academic mentor. Respond only with the JSON report conforming to the schema.",
+        response_schema=MasterySummarySchema,
         thinking_budget=0,
         session_id=state["session_id"],
         node_name="summarize_lesson",
     )
-    summary = json.loads(resp_text)
+    summary_data = _extract_items_from_json(resp_text, fallback_keys=("summary",))
+    summary = summary_data if isinstance(summary_data, dict) else (summary_data[0] if summary_data else {})
     summary["accuracy"] = accuracy
     summary["first_try_correct"] = first_try
     summary["total_attempts"] = len(attempts)
@@ -1353,6 +1291,9 @@ async def get_pedagogical_state(session_id: str) -> dict:
         return {"status": "not_found"}
     summary_row = await query_row("SELECT summary FROM summary_report WHERE session_id = $1", session_id)
     db_mcq = json.loads(row["current_mcq"]) if row["current_mcq"] else None
+    db_queue = json.loads(row["mcq_queue"]) if row.get("mcq_queue") else []
+    deck_public = [_public_mcq(m) for m in db_queue if m]
+
     return {
         "session_id": session_id,
         "status": (
@@ -1368,6 +1309,7 @@ async def get_pedagogical_state(session_id: str) -> dict:
         "slots": json.loads(row["slots"]) if row["slots"] else None,
         "current_objective": json.loads(row["current_objective"]) if row["current_objective"] else None,
         "current_mcq": _public_mcq(db_mcq) if db_mcq else None,
+        "questions_deck": deck_public,
         "hint_revealed": bool(row["hint_revealed"]),
         "coaching_message": row["coaching_message"],
         "last_result": _public_last_result(json.loads(row["last_result"]) if row["last_result"] else None),
