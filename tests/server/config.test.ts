@@ -48,4 +48,28 @@ describe("Server Config", () => {
     expect(config.googleApplicationCredentials).toBe("path/to/creds.json");
     expect(config.geminiApiKey).toBe("");
   });
+
+  it("does not default GOOGLE_CLOUD_PROJECT to a hard-coded project id", () => {
+    process.env.POSTGRES_URL = "postgresql://user:pass@db.example.com:5432/quizloop";
+    delete process.env.GOOGLE_CLOUD_PROJECT;
+
+    const config = parseConfig(process.env);
+    expect(config.googleCloudProject).toBe("");
+  });
+
+  it("defaults LANGSMITH_TRACING to false when unset", () => {
+    process.env.POSTGRES_URL = "postgresql://user:pass@db.example.com:5432/quizloop";
+    delete process.env.LANGSMITH_TRACING;
+
+    const config = parseConfig(process.env);
+    expect(config.langsmithTracing).toBe(false);
+  });
+
+  it("parses LANGSMITH_TRACING=true as true", () => {
+    process.env.POSTGRES_URL = "postgresql://user:pass@db.example.com:5432/quizloop";
+    process.env.LANGSMITH_TRACING = "true";
+
+    const config = parseConfig(process.env);
+    expect(config.langsmithTracing).toBe(true);
+  });
 });

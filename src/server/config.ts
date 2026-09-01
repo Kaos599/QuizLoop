@@ -9,7 +9,7 @@ const RawEnvSchema = z.object({
   POSTGRES_URL: z.string().optional(),
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL_NAME: z.string().default("gemini-3.7-flash"),
-  GOOGLE_CLOUD_PROJECT: z.string().default("gen-lang-client-0470874118"),
+  GOOGLE_CLOUD_PROJECT: z.string().default(""),
   GOOGLE_APPLICATION_CREDENTIALS: z.string().default(""),
   GOOGLE_CLOUD_LOCATION: z.string().default("global"),
   LANGSMITH_TRACING: z
@@ -18,7 +18,7 @@ const RawEnvSchema = z.object({
     .transform((val) => {
       if (typeof val === "boolean") return val;
       if (typeof val === "string") return val.toLowerCase() === "true" || val === "1";
-      return true;
+      return false;
     }),
   LANGSMITH_API_KEY: z.string().default(""),
   LANGSMITH_PROJECT: z.string().default("quizloop-platform"),

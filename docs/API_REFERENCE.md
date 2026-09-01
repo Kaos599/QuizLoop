@@ -22,7 +22,7 @@ The QuizLoop backend is implemented as **Next.js 16 App Router route handlers** 
 | `GET` | `/api/learning/{sessionId}/report` | Retrieve the final comprehensive Bloom's mastery report. |
 | `GET` | `/api/health` | Healthcheck and active model status. |
 
-**Common errors**: invalid UUID in path → `404 {"error": "Invalid session identifier."}`; missing session → `404 {"error": "Session not found"}` (exact strings per endpoint below).
+**Common errors**: invalid UUID in path → `404 {"error": "Invalid session identifier."}`; missing session → `404 {"error": "Session not found."}` (exact strings per endpoint below).
 
 ---
 
@@ -137,7 +137,7 @@ Submit a Human-in-the-Loop decision on the proposed curriculum plan. Dispatches 
     "planStatus": "review"
   }
   ```
-- **Errors**: `404 {"error": "Session not found"}` | `422 {"error": …, "details": […]}`
+- **Errors**: `404 {"error": "Session not found."}` | `422 {"error": …, "details": […]}`
 
 ---
 
@@ -169,7 +169,7 @@ Submit an answer letter for the current active question. Graded **instantly** ag
   }
   ```
   `nextMcq` is `null` when the answer was incorrect (same question re-presented) or the deck is complete.
-- **Errors**: `404 {"error": "Session not found"}` | `409 {"error": "No active question in this session"}` | `422 {"error": …, "details": […]}`
+- **Errors**: `404 {"error": "Session not found."}` | `409 {"error": "No active question in this session"}` | `422 {"error": …, "details": […]}`
 
 ---
 

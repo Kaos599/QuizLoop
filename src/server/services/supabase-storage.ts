@@ -24,9 +24,9 @@ export async function uploadPdfToSupabase(
     "x-upsert": "true",
   };
 
-  // Ensure bucket exists (attempt create or ignore)
+  // Ensure bucket exists (best-effort: only 409 AlreadyExists is expected)
   try {
-    await fetch(`${cleanUrl}/storage/v1/bucket`, {
+    const bucketResp = await fetch(`${cleanUrl}/storage/v1/bucket`, {
       method: "POST",
       headers: {
         ...getAuthHeaders(config.supabaseServiceRoleKey),
@@ -39,8 +39,12 @@ export async function uploadPdfToSupabase(
         file_size_limit: 26214400,
       }),
     });
-  } catch {
-    // Ignore bucket creation error if already exists
+    if (!bucketResp.ok && bucketResp.status !== 409) {
+      const errorText = await bucketResp.text();
+      console.warn(`Supabase bucket creation warning (status ${bucketResp.status}): ${errorText}`);
+    }
+  } catch (err) {
+    console.warn("Supabase bucket creation warning:", err);
   }
 
   // Upload file

@@ -2,6 +2,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { GET as healthHandler } from "@/app/api/health/route";
 import { GET as stateHandler } from "@/app/api/learning/[sessionId]/state/route";
+import { POST as submitMcqHandler } from "@/app/api/learning/[sessionId]/submit-mcq/route";
 import { NextRequest } from "next/server";
 import {
   UploadResponseSchema,
@@ -12,6 +13,12 @@ import {
   MCQItemPublicSchema,
 } from "@/server/schemas/pedagogical";
 import * as pg from "@/server/agents/pedagogical-graph";
+import { queryRow } from "@/server/db";
+
+vi.mock("@/server/db", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/server/db")>();
+  return { ...original, queryRow: vi.fn() };
+});
 
 describe("API Contracts & Schemas", () => {
   it("GET /api/health returns status and model info", async () => {
@@ -35,6 +42,26 @@ describe("API Contracts & Schemas", () => {
     const data = await res.json();
     expect(data.error).toBe("Session not found.");
     expect(data.detail).toBeUndefined();
+  });
+
+  it("submit-mcq returns 404 'Session not found.' for a missing session", async () => {
+    vi.mocked(queryRow).mockResolvedValue(null);
+
+    const req = new NextRequest(
+      "http://localhost/api/learning/00000000-0000-0000-0000-000000000000/submit-mcq",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ selectedLetter: "A" }),
+      }
+    );
+    const res = await submitMcqHandler(req, {
+      params: Promise.resolve({ sessionId: "00000000-0000-0000-0000-000000000000" }),
+    });
+
+    expect(res.status).toBe(404);
+    const data = await res.json();
+    expect(data.error).toBe("Session not found.");
   });
 
   it("UploadResponseSchema adheres strictly to camelCase wire schema", () => {

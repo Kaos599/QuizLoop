@@ -41,7 +41,7 @@ export interface AttemptRecord {
 }
 
 export interface LastResult {
-  verdict: "correct" | "incorrect" | string | null;
+  verdict: "correct" | "incorrect" | null;
   explanation?: string | null;
   hint?: string | null;
   diagnosticFeedback?: string | null;

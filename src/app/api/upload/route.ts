@@ -66,6 +66,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Both storage backends failed: the session would store unresolvable file
+    // references and the pipeline could never retrieve the document. Fail
+    // loudly instead of creating an unrecoverable session.
+    if (
+      !geminiUri.startsWith("https://generativelanguage.googleapis.com") &&
+      supabaseUrl.startsWith("https://supabase.storage.local/")
+    ) {
+      return httpError(
+        500,
+        "Could not process PDF: Supabase Storage and Gemini File API uploads both failed."
+      );
+    }
+
     // 3. Create Session Record in DB in 'ready' status
     const sessionId = crypto.randomUUID();
     await execute(

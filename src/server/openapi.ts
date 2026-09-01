@@ -31,7 +31,7 @@ export const openApiSpec = {
       get: {
         tags: ["System"],
         summary: "System Health Check",
-        description: "Checks database connectivity, environment readiness, and system status.",
+        description: "Returns service status, runtime environment, and the active Gemini model name.",
         responses: {
           "200": {
             description: "Service is healthy and ready to accept requests",
@@ -41,10 +41,10 @@ export const openApiSpec = {
                   type: "object",
                   properties: {
                     status: { type: "string", example: "ok" },
-                    timestamp: { type: "string", format: "date-time" },
-                    database: { type: "string", example: "connected" },
+                    environment: { type: "string", example: "development" },
+                    model: { type: "string", example: "gemini-3.7-flash" },
                   },
-                  required: ["status"],
+                  required: ["status", "environment", "model"],
                 },
               },
             },

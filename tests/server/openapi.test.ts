@@ -24,6 +24,17 @@ describe("OpenAPI Documentation Specification", () => {
     expect(paths).toContain("/api/learning/{sessionId}/task/{taskId}");
   });
 
+  it("documents GET /api/health with the actual response shape", () => {
+    const schema =
+      openApiSpec.paths["/api/health"].get.responses["200"].content["application/json"].schema;
+    const properties = schema.properties as Record<string, unknown>;
+    expect(properties.status).toBeDefined();
+    expect(properties.environment).toBeDefined();
+    expect(properties.model).toBeDefined();
+    expect(properties.timestamp).toBeUndefined();
+    expect(properties.database).toBeUndefined();
+  });
+
   it("GET /api/openapi.json route returns valid JSON spec", async () => {
     const res = await openApiHandler();
     expect(res.status).toBe(200);

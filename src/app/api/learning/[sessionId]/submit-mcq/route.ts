@@ -21,7 +21,7 @@ export async function POST(
 
     const session = await queryRow(`SELECT id FROM sessions WHERE id = $1::uuid`, [sessionId]);
     if (!session) {
-      return httpError(404, "Session not found");
+      return httpError(404, "Session not found.");
     }
 
     let bodyData: any = {};
