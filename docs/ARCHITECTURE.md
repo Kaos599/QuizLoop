@@ -11,13 +11,14 @@ flowchart TD
         ReportCard[MasteryReportCard Component]
     end
 
-    subgraph API [API Tier: Python FastAPI Service - Port 8000]
+    subgraph API [API Tier: Next.js 16 Route Handlers (Node.js runtime)]
         UploadRouter[/api/upload]
+        GenerateRouter[/api/learning/{id}/generate]
         StateRouter[/api/learning/{id}/state]
         ApprovalRouter[/api/learning/{id}/approve-plan]
         QuizRouter[/api/learning/{id}/submit-mcq\n/api/learning/{id}/hint\n/api/learning/{id}/learn-more]
         ReportRouter[/api/learning/{id}/report]
-        TaskReg[TaskRegistry - Async Job Dispatcher]
+        TaskReg[TaskRegistry - In-Process Async Job Dispatcher]
     end
 
     subgraph Agents [Agent Tier: LangGraph 1.x StateGraph]
@@ -42,15 +43,16 @@ flowchart TD
     UploadRouter -->|Store PDF Blob| Supabase
     UploadRouter -->|Register Active File| GeminiFileAPI
     UploadRouter -->|Initialize Session Row| Postgres
-    UploadRouter -->|Spawn Background Pipeline| TaskReg
-    TaskReg --> PlanNode
 
     %% HITL Curriculum Flow
+    UploadUI -->|2. Generate Quiz (Config)| GenerateRouter
+    GenerateRouter -->|Spawn Background Pipeline| TaskReg
+    TaskReg --> PlanNode
     PlanNode --> PlanReviewNode
     PlanReviewNode -.->|Pause & Checkpoint State| Postgres
-    PlanCard -->|2. Query State| StateRouter
+    PlanCard -->|3. Query State| StateRouter
     StateRouter -.->|Read State| Postgres
-    PlanCard -->|3. Submit Decision| ApprovalRouter
+    PlanCard -->|4. Submit Decision| ApprovalRouter
     ApprovalRouter -->|Command resume| PlanReviewNode
     PlanReviewNode -->|On Adjust: Re-draft| PlanNode
     PlanReviewNode -->|On Approve: Start Lesson| GenerateDeckNode
@@ -58,7 +60,7 @@ flowchart TD
     %% Quiz & Tutoring Flow
     GenerateDeckNode --> QuizInteractNode
     QuizInteractNode -.->|Serve Public Question| QuizWidget
-    QuizWidget -->|4. Submit Answer / Hint / Learn More| QuizRouter
+    QuizWidget -->|5. Submit Answer / Hint / Learn More| QuizRouter
     QuizRouter -->|Evaluate Answer| EvalAnswerNode
     QuizRouter -->|Request Coaching| TeachMoreNode
     TeachMoreNode --> QuizInteractNode
@@ -66,8 +68,8 @@ flowchart TD
     EvalAnswerNode -->|Deck Complete| SummarizeNode
 
     %% Mastery Summary Flow
-    SummarizeNode -->|5. Commit Summary Report| Postgres
-    ReportCard -->|6. Fetch Final Report| ReportRouter
+    SummarizeNode -->|6. Commit Summary Report| Postgres
+    ReportCard -->|7. Fetch Final Report| ReportRouter
     ReportRouter -.->|Read Report| Postgres
 ```
 
@@ -80,21 +82,24 @@ flowchart TD
 - **State Hydration**: Uses graph checkpoint states from `/api/learning/{sessionId}/state` as the single source of truth.
 - **Client Resilience**: Supports instant retry on network errors, local optimistic updates, and clean state restoration on page reload.
 
-### API Tier (FastAPI + Asynchronous Workers)
+### API Tier (Next.js 16 App Router Route Handlers)
+- **Runtime**: All handlers export `runtime = "nodejs"` and `maxDuration = 60` (LLM-touching routes); the API serves on the same origin as the frontend under `/api/*`.
 - **Entry Points**:
-  - `POST /api/upload`: Multipart document upload, file validation, and initial session creation.
+  - `POST /api/upload`: Multipart document upload, content-based `%PDF` validation, Supabase + Gemini File API registration, and initial session creation.
   - `GET /api/learning/{sessionId}/state`: Returns sanitized public pedagogical state (correct answers and answer keys are strictly stripped).
-  - `POST /api/learning/{sessionId}/approve-plan`: Awaited HITL resume endpoint for approve, adjust, or reject decisions.
-  - `POST /api/learning/{sessionId}/submit-mcq`: Instant deterministic evaluation without round-trip LLM latency.
-  - `POST /api/learning/{sessionId}/hint`: Socratic multi-tier hint generator.
+  - `POST /api/learning/{sessionId}/approve-plan`: Dispatches HITL resume for approve, adjust, or reject decisions.
+  - `POST /api/learning/{sessionId}/submit-mcq`: Instant deterministic evaluation without round-trip LLM latency; carries the next question directly.
+  - `POST /api/learning/{sessionId}/hint`: Socratic hint generator (empty body tolerated).
   - `POST /api/learning/{sessionId}/learn-more`: Deep conceptual tutoring grounded in the source PDF.
-  - `GET /api/learning/{sessionId}/report`: Retrieves the final Bloom's mastery report.
-- **Background Task Management**: Uses `TaskRegistry` to dispatch non-blocking background graph runs and track execution health.
+  - `GET /api/learning/{sessionId}/report`: Retrieves the final Bloom's mastery report (409 while active, 404 if missing).
+  - `GET /api/learning/{sessionId}/task/{taskId}`: Polls background task execution health.
+- **Background Task Management**: Uses an in-process `TaskRegistry` to dispatch non-blocking background graph runs, with in-flight dedup per `sessionId + action` (LangGraph rejects concurrent resumes of one thread) and a bounded task store (`MAX_TASKS = 200`).
+- **Error Envelopes**: 4xx/5xx → `{ "error": … }` (no `detail` key); Zod validation → 422 `{ "error": …, "details": […] }`; malformed UUID → 404.
 
-### Agent Tier (LangGraph 1.x Pedagogical Graph)
-- **Orchestration**: Asynchronous, cyclic StateGraph with native `interrupt()` and `Command(resume=...)` support.
-- **Answer Security**: The internal state (`mcq_queue`, `current_mcq`) retains full answer metadata in server memory, while the public endpoint filters all answers to prevent client-side inspection.
-- **Refinement Loop**: The plan review step supports up to 3 iterative re-drafts with human feedback before falling back to a structured default.
+### Agent Tier (LangGraph.js 1.x Pedagogical Graph)
+- **Orchestration**: Asynchronous, cyclic StateGraph (`@langchain/langgraph`) with native `interrupt()` and `Command({ resume, goto, update })` support; production uses `PostgresSaver` (durable cross-request resumes), tests use `MemorySaver`.
+- **Answer Security**: The internal state (`mcq_queue`, `current_mcq`) retains full answer metadata in server memory/DB snapshots, while every public endpoint re-serializes through the answer-stripping helpers (`publicMcq`, `publicLastResult`, `serializePublicState`) to prevent client-side inspection.
+- **Refinement Loop**: The plan review step supports up to 3 iterative re-drafts with human feedback, a clarifying micro-interrupt for empty feedback, and a simplified-plan fallback before locking in the closest version.
 
 ### Persistence & Storage Tier
 - **PostgreSQL Database**:
