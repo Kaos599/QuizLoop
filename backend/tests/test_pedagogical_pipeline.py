@@ -77,9 +77,7 @@ def _install_llm_mocks(monkeypatch, plan_next=None, mcq_index=0):
 
     async def fake_mcq(contents, system_instruction=None, response_schema=None, **kwargs):
         calls["mcq"] += 1
-        if response_schema and response_schema.get("type") == "ARRAY":
-            return json.dumps([MCQ_RESPONSE, MCQ_RESPONSE, MCQ_RESPONSE, MCQ_RESPONSE, MCQ_RESPONSE])
-        return json.dumps(MCQ_RESPONSE)
+        return json.dumps([MCQ_RESPONSE, MCQ_RESPONSE, MCQ_RESPONSE, MCQ_RESPONSE, MCQ_RESPONSE])
 
     async def fake_summary(contents, system_instruction=None, response_schema=None, **kwargs):
         calls["summary"] += 1

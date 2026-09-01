@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     langsmith_endpoint: str = Field(default="https://api.smith.langchain.com", alias="LANGSMITH_ENDPOINT")
 
     # Database
-    postgres_url: str = Field(..., alias="POSTGRES_URL")
+    postgres_url: str = Field(alias="POSTGRES_URL")
 
     # Supabase
     supabase_url: str = Field(default="", alias="SUPABASE_URL")

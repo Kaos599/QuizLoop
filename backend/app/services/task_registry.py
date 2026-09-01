@@ -49,8 +49,18 @@ class TaskRegistry:
         self._lock = asyncio.Lock()
 
     async def submit(self, session_id: str, action: str, coro) -> TaskRecord:
-        record = TaskRecord(session_id, action)
         async with self._lock:
+            # Reuse an in-flight task for the same session+action. LangGraph
+            # rejects concurrent resumes of one thread, so double-clicks or a
+            # page refresh mid-run must never spawn a second resume.
+            for rec in self._tasks.values():
+                if (
+                    rec.session_id == session_id
+                    and rec.action == action
+                    and rec.status in ("pending", "running")
+                ):
+                    return rec
+            record = TaskRecord(session_id, action)
             self._tasks[record.task_id] = record
             if len(self._tasks) > MAX_TASKS:
                 # Evict oldest finished entries to bound memory.

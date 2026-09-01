@@ -44,13 +44,6 @@ const difficultyLabel: Record<string, string> = {
   advanced: "Advanced",
 };
 
-const styleLabel: Record<string, string> = {
-  scenario: "Scenario-based",
-  application: "Applied problem solving",
-  conceptual: "Conceptual",
-  mixed: "Mixed styles",
-};
-
 const QUICK_SUGGESTIONS = [
   "Make questions more advanced",
   "Add practical scenario questions",
@@ -242,9 +235,6 @@ export function PlanApprovalCard({
             <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-white/10 border border-white/15 text-slate-200">
               {difficultyLabel[quizConfig.difficulty] ?? quizConfig.difficulty}
             </span>
-            <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-white/10 border border-white/15 text-slate-200">
-              {styleLabel[quizConfig.question_style] ?? quizConfig.question_style}
-            </span>
           </div>
         </div>
       </div>
@@ -269,7 +259,7 @@ export function PlanApprovalCard({
             </span>
             <span className="text-xs text-slate-400">•</span>
             <span className="text-xs font-medium text-slate-500">
-              {plan.reduce((s, o) => s + o.question_count, 0)} questions total
+              {plan.reduce((s, o) => s + (o.question_count ?? o.questionCount ?? 1), 0)} questions total
             </span>
           </div>
 
@@ -366,7 +356,7 @@ export function PlanApprovalCard({
                       </div>
                       <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 shrink-0">
                         <SlidersHorizontal className="w-3 h-3" />
-                        {obj.question_count} question{obj.question_count === 1 ? "" : "s"}
+                        {obj.question_count ?? obj.questionCount ?? 1} question{(obj.question_count ?? obj.questionCount ?? 1) === 1 ? "" : "s"}
                       </span>
                     </div>
                     <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
@@ -383,7 +373,7 @@ export function PlanApprovalCard({
                           bloomsBadgeColors[bloomsKey] || "bg-slate-100 text-slate-800 border-slate-200"
                         )}
                       >
-                        Level: {obj.blooms_level}
+                        Level: {obj.blooms_level || obj.bloomsLevel || "Apply"}
                       </span>
                       <span
                         className={cn(

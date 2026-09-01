@@ -1,6 +1,16 @@
 import logging
 import time
+import os
+import sys
+import asyncio
 from contextlib import asynccontextmanager
+
+if sys.platform == "win32":
+    try:
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    except Exception:
+        pass
+
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -8,33 +18,20 @@ from fastapi.exceptions import RequestValidationError, HTTPException
 from app.config import settings
 from app.logging_config import configure_logging, LOGS_DIR
 from app.db import init_db_pool, close_db_pool, execute
-from app.routes import upload, questions, submit, interactive
-import os
+from app.routes import upload, learning
 
 configure_logging()
 logger = logging.getLogger("quizloop.main")
 flow_logger = logging.getLogger("quizloop.prompts_and_flows")
-flow_logger = logging.getLogger("quizloop.prompts_and_flows")
 
 async def run_db_migrations():
-    """Runs the initial schema SQL migration if tables do not exist."""
+    """Runs the schema SQL migration if tables do not exist."""
     migration_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "migrations", "001_initial_schema.sql")
     if os.path.exists(migration_file):
         logger.info("Applying database migrations...")
         with open(migration_file, "r", encoding="utf-8") as f:
             sql = f.read()
         await execute(sql)
-        try:
-            await execute(
-                """
-                DELETE FROM pedagogical_sessions a USING pedagogical_sessions b
-                WHERE a.ctid < b.ctid AND a.session_id = b.session_id;
-                CREATE UNIQUE INDEX IF NOT EXISTS uq_pedagogical_sessions_session_id ON pedagogical_sessions(session_id);
-                CREATE UNIQUE INDEX IF NOT EXISTS uq_summary_report_session_id ON summary_report(session_id);
-                """
-            )
-        except Exception as e:
-            logger.warning(f"Could not create unique index on pedagogical_sessions/summary_report: {e}")
         logger.info("Database migrations applied successfully.")
 
 @asynccontextmanager
@@ -46,13 +43,23 @@ async def lifespan(app: FastAPI):
         await run_db_migrations()
     except Exception as e:
         logger.error(f"Migration error during startup: {e}", exc_info=True)
+    try:
+        from app.agents.pedagogical_graph import get_graph
+        await get_graph()
+    except Exception as e:
+        logger.warning(f"Checkpointer graph initialization warning: {e}")
     yield
     # Shutdown
     logger.info("Shutting down QuizLoop FastAPI service...")
+    try:
+        from app.agents.pedagogical_graph import close_checkpointer_pool
+        await close_checkpointer_pool()
+    except Exception as e:
+        logger.warning(f"Error during checkpointer pool shutdown: {e}")
     await close_db_pool()
 
 app = FastAPI(
-    title="QuizLoop Interactive AI Quiz & Simulation Platform",
+    title="QuizLoop Pedagogical AI Assessment Engine",
     version="3.0.0",
     lifespan=lifespan
 )
@@ -121,8 +128,5 @@ async def health():
 
 # 4. Include Routers
 app.include_router(upload.router)
-app.include_router(questions.router)
-app.include_router(submit.router)
-app.include_router(interactive.router)
-from app.routes import learning
 app.include_router(learning.router)
+

@@ -60,32 +60,38 @@ function toView(o: any): PlanObjectiveView {
 }
 
 function normalizeRaw(raw: any, sessionId: string): PedagogicalStateResponse {
-  const viewPlan: PlanObjectiveView[] = Array.isArray(raw.plan) ? raw.plan.map(toView) : null;
-  const pending = raw.pending_interrupt || null;
+  const rawPlan = raw.plan || [];
+  const viewPlan: PlanObjectiveView[] = Array.isArray(rawPlan) ? rawPlan.map(toView) : [];
+  const pending = raw.pending_interrupt || raw.pendingInterrupt || null;
 
-  const perObjective = Array.isArray(raw.summary?.per_objective)
-    ? raw.summary.per_objective.map((r: any) => ({
-        objectiveId: r.objective_id,
-        title: r.title,
+  const rawSummary = raw.summary || raw.masterySummary;
+  const rawPerObjective = rawSummary?.per_objective || rawSummary?.perObjective;
+  const perObjective = Array.isArray(rawPerObjective)
+    ? rawPerObjective.map((r: any) => ({
+        objectiveId: r.objective_id || r.objectiveId || "",
+        title: r.title || "",
         passed: Boolean(r.passed),
         attempts: Number(r.attempts ?? 0),
-        firstTry: Boolean(r.first_try),
+        firstTry: Boolean(r.first_try ?? r.firstTry),
         comment: r.comment || "",
       }))
     : undefined;
 
+  const rawConfig = raw.quiz_config || raw.quizConfig;
+  const rawMcq = raw.current_mcq || raw.currentMCQ || raw.currentMcq;
+  const rawLastResult = raw.last_result || raw.lastResult;
+
   return {
-    sessionId: raw.session_id || sessionId,
+    sessionId: raw.session_id || raw.sessionId || sessionId,
     status: (raw.status || "planning") as PedagogicalStateResponse["status"],
-    planStatus: (raw.plan_status || "drafting") as PedagogicalStateResponse["planStatus"],
+    planStatus: (raw.plan_status || raw.planStatus || "drafting") as PedagogicalStateResponse["planStatus"],
     quizConfig: {
-      total_questions: Number(raw.quiz_config?.total_questions ?? 5),
-      difficulty: raw.quiz_config?.difficulty ?? "auto",
-      question_style: raw.quiz_config?.question_style ?? "scenario",
+      total_questions: Number(rawConfig?.total_questions ?? rawConfig?.totalQuestions ?? 5),
+      difficulty: rawConfig?.difficulty ?? "auto",
     },
-    plan: viewPlan || [],
+    plan: viewPlan,
     revision: Number(raw.revision ?? 0),
-    planCapReached: Boolean(raw.plan_cap_reached),
+    planCapReached: Boolean(raw.plan_cap_reached ?? raw.planCapReached),
     slots: raw.slots
       ? {
           total: Number(raw.slots.total ?? 0),
@@ -93,37 +99,37 @@ function normalizeRaw(raw: any, sessionId: string): PedagogicalStateResponse {
           index: Number(raw.slots.index ?? 1),
         }
       : null,
-    currentObjectiveId: raw.current_objective?.id,
-    currentMCQ: raw.current_mcq
+    currentObjectiveId: raw.current_objective?.id || raw.currentObjective?.id || raw.currentObjectiveId,
+    currentMCQ: rawMcq
       ? {
-          question: raw.current_mcq.question || raw.current_mcq.scenario || "",
-          scenario: raw.current_mcq.scenario,
-          options: (raw.current_mcq.options || []).map((o: any) => ({
+          question: rawMcq.question || rawMcq.scenario || "",
+          scenario: rawMcq.scenario,
+          options: (rawMcq.options || []).map((o: any) => ({
             letter: o.letter || o.id || "",
             text: o.text || "",
           })),
-          hint: raw.current_mcq.hint,
+          hint: rawMcq.hint,
         }
       : undefined,
-    hintRevealed: Boolean(raw.hint_revealed),
-    coachingMessage: raw.coaching_message ?? null,
-    lastResult: raw.last_result
+    hintRevealed: Boolean(raw.hint_revealed ?? raw.hintRevealed),
+    coachingMessage: raw.coaching_message ?? raw.coachingMessage ?? null,
+    lastResult: rawLastResult
       ? {
-          verdict: raw.last_result.verdict,
-          explanation: raw.last_result.explanation,
-          hint: raw.last_result.hint,
-          diagnosticFeedback: raw.last_result.diagnostic_feedback,
-          keyTakeaway: raw.last_result.key_takeaway,
-          attemptNo: raw.last_result.attempt_no,
-          selectedLetter: raw.last_result.selected_letter,
+          verdict: rawLastResult.verdict,
+          explanation: rawLastResult.explanation,
+          hint: rawLastResult.hint,
+          diagnosticFeedback: rawLastResult.diagnostic_feedback || rawLastResult.diagnosticFeedback,
+          keyTakeaway: rawLastResult.key_takeaway || rawLastResult.keyTakeaway,
+          attemptNo: rawLastResult.attempt_no || rawLastResult.attemptNo,
+          selectedLetter: rawLastResult.selected_letter || rawLastResult.selectedLetter,
         }
       : undefined,
     attempts: (raw.attempts || []).map((a: any) => ({
-      objectiveId: a.objective_id,
-      slotNo: Number(a.slot_no ?? 0),
-      selectedLetter: a.selected_letter,
-      isCorrect: Boolean(a.is_correct),
-      attemptNo: Number(a.attempt_no ?? 1),
+      objectiveId: a.objective_id || a.objectiveId || "",
+      slotNo: Number(a.slot_no ?? a.slotNo ?? 0),
+      selectedLetter: a.selected_letter || a.selectedLetter,
+      isCorrect: Boolean(a.is_correct ?? a.isCorrect),
+      attemptNo: Number(a.attempt_no ?? a.attemptNo ?? 1),
       ts: Number(a.ts ?? 0),
     })),
     questionsDeck: Array.isArray(raw.questions_deck || raw.questionsDeck)
@@ -137,15 +143,15 @@ function normalizeRaw(raw: any, sessionId: string): PedagogicalStateResponse {
           hint: m.hint,
         }))
       : undefined,
-    masterySummary: raw.summary
+    masterySummary: rawSummary
       ? {
-          accuracy: Number(raw.summary.accuracy ?? 0),
-          firstTryCorrect: Number(raw.summary.first_try_correct ?? 0),
-          totalAttempts: Number(raw.summary.total_attempts ?? 0),
+          accuracy: Number(rawSummary.accuracy ?? 0),
+          firstTryCorrect: Number(rawSummary.first_try_correct ?? rawSummary.firstTryCorrect ?? 0),
+          totalAttempts: Number(rawSummary.total_attempts ?? rawSummary.totalAttempts ?? 0),
           perObjective: perObjective || [],
-          strengths: raw.summary.strengths || [],
-          areasForReview: raw.summary.areas_for_review || [],
-          personalizedStudyTips: raw.summary.personalized_study_tips || [],
+          strengths: rawSummary.strengths || [],
+          areasForReview: rawSummary.areas_for_review || rawSummary.areasForReview || [],
+          personalizedStudyTips: rawSummary.personalized_study_tips || rawSummary.personalizedStudyTips || [],
         }
       : undefined,
     pendingInterrupt: pending
@@ -155,15 +161,15 @@ function normalizeRaw(raw: any, sessionId: string): PedagogicalStateResponse {
           prompt: pending.prompt,
           options: pending.options,
           revision: Number(pending.revision ?? 0),
-          capReached: Boolean(pending.cap_reached),
-          maxRevisions: pending.max_revisions,
+          capReached: Boolean(pending.cap_reached ?? pending.capReached),
+          maxRevisions: pending.max_revisions ?? pending.maxRevisions,
           ...(pending.type === "quiz"
             ? {
                 questionIndex:
-                  Number(pending.question_index ?? 1) <= 0
+                  Number(pending.question_index ?? pending.questionIndex ?? 1) <= 0
                     ? 1
-                    : Number(pending.question_index ?? 1),
-                totalQuestions: Number(pending.total_questions ?? 0),
+                    : Number(pending.question_index ?? pending.questionIndex ?? 1),
+                totalQuestions: Number(pending.total_questions ?? pending.totalQuestions ?? 0),
                 objective: pending.objective ? toView(pending.objective) : ({} as PlanObjectiveView),
                 mcq: pending.mcq
                   ? {
@@ -176,17 +182,17 @@ function normalizeRaw(raw: any, sessionId: string): PedagogicalStateResponse {
                       hint: pending.mcq.hint,
                     }
                   : ({} as MCQItem),
-                hintRevealed: Boolean(pending.hint_revealed),
-                coachingMessage: pending.coaching_message ?? null,
-                lastResult: pending.last_result
+                hintRevealed: Boolean(pending.hint_revealed ?? pending.hintRevealed),
+                coachingMessage: pending.coaching_message ?? pending.coachingMessage ?? null,
+                lastResult: (pending.last_result || pending.lastResult)
                   ? ({
-                      verdict: pending.last_result.verdict,
-                      explanation: pending.last_result.explanation,
-                      hint: pending.last_result.hint,
-                      diagnosticFeedback: pending.last_result.diagnostic_feedback,
-                      keyTakeaway: pending.last_result.key_takeaway,
-                      attemptNo: pending.last_result.attempt_no,
-                      selectedLetter: pending.last_result.selected_letter,
+                      verdict: (pending.last_result || pending.lastResult).verdict,
+                      explanation: (pending.last_result || pending.lastResult).explanation,
+                      hint: (pending.last_result || pending.lastResult).hint,
+                      diagnosticFeedback: (pending.last_result || pending.lastResult).diagnostic_feedback || (pending.last_result || pending.lastResult).diagnosticFeedback,
+                      keyTakeaway: (pending.last_result || pending.lastResult).key_takeaway || (pending.last_result || pending.lastResult).keyTakeaway,
+                      attemptNo: (pending.last_result || pending.lastResult).attempt_no || (pending.last_result || pending.lastResult).attemptNo,
+                      selectedLetter: (pending.last_result || pending.lastResult).selected_letter || (pending.last_result || pending.lastResult).selectedLetter,
                     } as LastResult)
                   : null,
               }
@@ -230,6 +236,7 @@ export function PedagogicalWorkspace({ sessionId }: PedagogicalWorkspaceProps) {
   const [state, setState] = useState<PedagogicalStateResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [activeTask, setActiveTask] = useState<{ id: string; action: string } | null>(null);
 
   const pollInFlightRef = useRef(false);
   const lastStateKeyRef = useRef("");
@@ -297,65 +304,107 @@ export function PedagogicalWorkspace({ sessionId }: PedagogicalWorkspaceProps) {
     return () => clearInterval(pollInterval);
   }, [planStatus, sessionStatus, hasCurrentMCQ, hasMasterySummary, isAdjustingPlan, isApprovingPlan, fetchState]);
 
-  /* ---- plan ---- */
-  const handleApprovePlan = async () => {
-    setActionError(null);
-    setIsApprovingPlan(true);
-    setBusy(true);
-    try {
-      const res = await postJSON(`/api/learning/${sessionId}/approve-plan`, { decision: "approve" });
-      if (res?.state) {
-        setState(normalizeRaw(res.state, sessionId));
-      } else {
-        await fetchState();
+  // Poll the background task (approve/adjust/learn-more) until it resolves.
+  // The HTTP POST returns a task_id instantly, so a 30-60s LLM run can never
+  // hit a proxy/browser timeout; real failures surface via the task record.
+  const taskPollInFlightRef = useRef(false);
+
+  useEffect(() => {
+    if (!activeTask) return;
+    let cancelled = false;
+
+    const checkTask = async () => {
+      if (taskPollInFlightRef.current) return;
+      taskPollInFlightRef.current = true;
+      try {
+        const res = await fetch(`/api/learning/${sessionId}/task/${activeTask.id}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        if (data.status === "done") {
+          setActiveTask(null);
+          setIsApprovingPlan(false);
+          setIsAdjustingPlan(false);
+          await fetchState();
+        } else if (data.status === "failed") {
+          setActiveTask(null);
+          setIsApprovingPlan(false);
+          setIsAdjustingPlan(false);
+          setActionError(
+            data.error || "The request could not be completed. Please try again.",
+          );
+        }
+      } catch {
+        // transient error - keep polling
+      } finally {
+        taskPollInFlightRef.current = false;
       }
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Could not start the lesson. Please try again.");
-    } finally {
-      setIsApprovingPlan(false);
-      setBusy(false);
-    }
+    };
+
+    checkTask();
+    const pollInterval = setInterval(checkTask, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(pollInterval);
+    };
+  }, [activeTask, sessionId, fetchState]);
+
+  /* ---- plan ---- */
+  const dispatchTask = useCallback(
+    async (url: string, body: unknown, action: string): Promise<string | null> => {
+      setActionError(null);
+      setBusy(true);
+      try {
+        const res = await postJSON<{ task_id?: string; taskId?: string; state?: unknown }>(
+          url,
+          body,
+        );
+        if (res?.state) setState(normalizeRaw(res.state, sessionId));
+        const taskId = res?.task_id || res?.taskId;
+        if (taskId) {
+          setActiveTask({ id: taskId, action });
+          return taskId;
+        }
+        await fetchState();
+        return null;
+      } catch (e) {
+        setActionError(e instanceof Error ? e.message : "Something went wrong. Please try again.");
+        return null;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [sessionId, fetchState],
+  );
+
+  const handleApprovePlan = async () => {
+    setIsApprovingPlan(true);
+    const taskId = await dispatchTask(
+      `/api/learning/${sessionId}/approve-plan`,
+      { decision: "approve" },
+      "plan_approval",
+    );
+    if (!taskId) setIsApprovingPlan(false);
   };
 
   const handleAdjustPlan = async (feedback: string) => {
-    setActionError(null);
     setIsAdjustingPlan(true);
-    setBusy(true);
-    try {
-      const res = await postJSON(`/api/learning/${sessionId}/approve-plan`, {
-        decision: "adjust",
-        feedback,
-      });
-      if (res?.state) {
-        setState(normalizeRaw(res.state, sessionId));
-      } else {
-        await fetchState();
-      }
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Could not re-draft the plan. Please try again.");
-    } finally {
-      setIsAdjustingPlan(false);
-      setBusy(false);
-    }
+    const taskId = await dispatchTask(
+      `/api/learning/${sessionId}/approve-plan`,
+      { decision: "adjust", feedback },
+      "plan_approval",
+    );
+    if (!taskId) setIsAdjustingPlan(false);
   };
 
   const handleRejectAll = async () => {
-    setActionError(null);
     setIsAdjustingPlan(true);
-    setBusy(true);
-    try {
-      const res = await postJSON(`/api/learning/${sessionId}/approve-plan`, { decision: "reject_all" });
-      if (res?.state) {
-        setState(normalizeRaw(res.state, sessionId));
-      } else {
-        await fetchState();
-      }
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Could not re-draft the plan. Please try again.");
-    } finally {
-      setIsAdjustingPlan(false);
-      setBusy(false);
-    }
+    const taskId = await dispatchTask(
+      `/api/learning/${sessionId}/approve-plan`,
+      { decision: "reject_all" },
+      "plan_approval",
+    );
+    if (!taskId) setIsAdjustingPlan(false);
   };
 
   /* ---- quiz ---- */
@@ -373,12 +422,7 @@ export function PedagogicalWorkspace({ sessionId }: PedagogicalWorkspaceProps) {
   };
 
   const handleLearnMore = async (question: string) => {
-    const res = await postJSON(`/api/learning/${sessionId}/learn-more`, { question });
-    if (res?.state) {
-      setState(normalizeRaw(res.state, sessionId));
-    } else {
-      await fetchState();
-    }
+    await dispatchTask(`/api/learning/${sessionId}/learn-more`, { question }, "learn_more");
   };
 
   const handleNext = async () => {
@@ -547,7 +591,24 @@ export function PedagogicalWorkspace({ sessionId }: PedagogicalWorkspaceProps) {
             </div>
           )}
 
-          {phase === 1 && !isAdjustingPlan && reviewMode && (
+          {phase === 1 && isApprovingPlan && (
+            <div className="flex flex-col items-center justify-center py-20 space-y-4 text-center animate-in fade-in duration-300">
+              <div className="w-14 h-14 rounded-2xl bg-teal-50 text-[#0D8267] border border-teal-200 flex items-center justify-center shadow-xs">
+                <Loader2 className="w-7 h-7 animate-spin text-[#0D8267]" />
+              </div>
+              <div className="space-y-1.5 max-w-sm">
+                <h2 className="text-lg font-bold text-slate-900">Generating your questions…</h2>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Crafting your complete question deck from the source document.
+                </p>
+              </div>
+              <div className="w-56">
+                <Progress value={60} className="h-1.5" />
+              </div>
+            </div>
+          )}
+
+          {phase === 1 && !isAdjustingPlan && !isApprovingPlan && reviewMode && (
             <div className="animate-in fade-in slide-in-from-bottom-3 duration-300">
               <PlanApprovalCard
                 plan={(state.pendingInterrupt as any)?.plan?.length
@@ -595,7 +656,7 @@ export function PedagogicalWorkspace({ sessionId }: PedagogicalWorkspaceProps) {
                   totalQuestions={(state.pendingInterrupt as any)?.totalQuestions ?? state.slots?.total ?? state.plan.length}
                   hintRevealed={state.hintRevealed}
                   coachingMessage={state.coachingMessage}
-                  isBusy={busy}
+                  isBusy={busy || activeTask !== null}
                   onSubmit={handleSubmitAnswer}
                   onRequestHint={handleRequestHint}
                   onLearnMore={handleLearnMore}

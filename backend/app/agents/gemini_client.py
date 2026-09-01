@@ -202,7 +202,7 @@ async def generate_gemini_content(
                     thought_tokens = thought_tokens + $3,
                     total_tokens = total_tokens + $4,
                     updated_at = NOW()
-                WHERE id = $5
+                WHERE id = $5::uuid
                 """,
                 prompt_tokens, output_tokens, thought_tokens, total_tokens, session_id
             )
@@ -212,7 +212,7 @@ async def generate_gemini_content(
                 """
                 INSERT INTO token_usage_logs 
                 (session_id, node_name, model_name, prompt_tokens, thought_tokens, output_tokens, total_tokens, latency_ms)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8)
                 """,
                 session_id, node_name, target_model, prompt_tokens, thought_tokens, output_tokens, total_tokens, duration_ms
             )
