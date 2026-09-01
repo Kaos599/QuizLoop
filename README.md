@@ -8,10 +8,10 @@ Transform technical documents, research publications, and textbooks into structu
 
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-black?style=flat&logo=next.js)](https://nextjs.org/)
 [![React 19](https://img.shields.io/badge/React-19-61DAFB?style=flat&logo=react)](https://react.dev/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?style=flat&logo=fastapi)](https://fastapi.tiangolo.com/)
-[![Python 3.13](https://img.shields.io/badge/Python-3.13-3776AB?style=flat&logo=python)](https://python.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat&logo=typescript)](https://typescriptlang.org/)
+[![Node.js 20+](https://img.shields.io/badge/Node.js-20+-339933?style=flat&logo=node.js)](https://nodejs.org/)
 [![Google Gemini 3.7](https://img.shields.io/badge/Google_Gemini-3.7_Flash-4285F4?style=flat&logo=google)](https://ai.google.dev/)
-[![LangGraph](https://img.shields.io/badge/LangGraph-Python-FF6F00?style=flat)](https://github.com/langchain-ai/langgraph)
+[![LangGraph](https://img.shields.io/badge/LangGraph.js-1.x-FF6F00?style=flat)](https://github.com/langchain-ai/langgraphjs)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-336791?style=flat&logo=postgresql)](https://www.postgresql.org/)
 
 [Key Features](#key-features) • [System Architecture](#system-architecture) • [Pedagogical Flow](#pedagogical-pipeline-flow) • [Quick Start](#quick-start) • [Documentation Hub](#documentation-hub) • [Testing](#testing)
@@ -42,7 +42,7 @@ flowchart TD
         MasteryUI["Mastery Analytics & Radar Report"]
     end
 
-    subgraph Backend ["API Tier (FastAPI + Asyncpg)"]
+    subgraph Backend ["API Tier (Next.js 16 Route Handlers)"]
         UploadAPI["POST /api/upload"]
         GenerateAPI["POST /api/learning/{id}/generate"]
         StateAPI["GET /api/learning/{id}/state"]
@@ -51,7 +51,7 @@ flowchart TD
         ReportAPI["GET /api/learning/{id}/report"]
     end
 
-    subgraph Pipeline ["LangGraph Pedagogical Pipeline (Gemini 3.7 Flash)"]
+    subgraph Pipeline ["LangGraph.js Pedagogical Pipeline (Gemini 3.7 Flash)"]
         PlanNode["1. Plan Node\n(Curriculum Extraction & Question Budgeting)"]
         Interrupt1["2. Plan Review Node\n(LangGraph interrupt() - Await Approval)"]
         DeckNode["3. Generate MCQ Deck Node\n(Single-Pass Structured Generation)"]
@@ -104,7 +104,7 @@ The platform executes a 5-stage lifecycle designed for high pedagogical rigor an
                            └─ <Re-Draft Loop> ┘
 ```
 
-1. **PDF Ingestion**: The student or educator uploads a document and sets question count (3 to 10), difficulty, and question style.
+1. **PDF Ingestion**: The student or educator uploads a document and sets question count (3 to 10) and difficulty.
 2. **Curriculum Planning**: Gemini 3.7 analyzes the document structure and extracts 3 to 5 core learning objectives with proportional question weights.
 3. **HITL Review & Refinement**: The user inspects the proposed syllabus. Rejection or feedback triggers an automated re-drafting loop (up to 3 revisions before fallback).
 4. **Assessment & Socratic Tutoring**: The student steps through the question deck. Instant evaluation provides deterministic feedback without LLM lag, while Socratic hints and "Ask the Coach" explanations offer grounded guidance.
@@ -116,47 +116,27 @@ The platform executes a 5-stage lifecycle designed for high pedagogical rigor an
 
 ### Prerequisites
 - **Node.js** 20+ and **npm** (or pnpm/yarn)
-- **Python** 3.12+ (Python 3.13 recommended)
 - **PostgreSQL** 15+ database instance (Supabase, Neon, or local)
 - **Google Gemini API Key** (`gemini-3.7-flash`)
 
-### 1. Backend Setup
+### Setup
 
 ```bash
-# Navigate to backend directory
-cd backend
-
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-# Windows:
-.\venv\Scripts\activate
-# macOS/Linux:
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Configure environment variables
-cp .env.example .env
-# Edit .env with your GEMINI_API_KEY and DATABASE_URL
-
-# Start FastAPI service
-uvicorn app.main:app --reload --port 8000
-```
-
-### 2. Frontend Setup
-
-```bash
-# In the project root directory
+# 1. Install dependencies (single codebase — frontend + API in one Next.js app)
 npm install
 
-# Start Next.js development server
+# 2. Configure environment variables
+cp .env.example .env
+# Edit .env with your GEMINI_API_KEY and POSTGRES_URL
+
+# 3. Apply the database schema
+npm run db:migrate
+
+# 4. Start the Next.js development server (API + frontend)
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000) in your browser. The API runs on the same origin under `/api/*`.
 
 ---
 
@@ -166,24 +146,23 @@ Detailed architecture specifications and technical references are available in t
 
 | Document | Description |
 | :--- | :--- |
-| **[System Architecture](docs/ARCHITECTURE.md)** | Client tier, FastAPI application architecture, LangGraph state persistence, and storage design. |
+| **[System Architecture](docs/ARCHITECTURE.md)** | Next.js API tier, LangGraph.js state machine, PostgreSQL persistence, and storage design. |
 | **[AI Agent Pipeline](docs/AI_AGENT_PIPELINE.md)** | Pedagogical StateGraph, node responsibilities, HITL interrupt/resume semantics, and reflection rules. |
 | **[API Reference](docs/API_REFERENCE.md)** | Complete REST contracts for PDF upload, state polling, plan approval, quiz execution, and mastery reporting. |
 | **[Database Schema](docs/DATABASE_SCHEMA.md)** | PostgreSQL relational DDL, session state schemas, summary reports, and migrations. |
 | **[Getting Started and Operations](docs/GETTING_STARTED.md)** | Environment variables, local setup instructions, test suites, and operational troubleshooting. |
+| **[Migration Ledger](docs/BACKEND_TS_MIGRATION_LEDGER.md)** | Historical record of the Python → TypeScript backend migration. |
 
 ---
 
 ## Testing
 
 ```bash
-# Run backend test suite
-cd backend
-python -m pytest tests/ -v
+# Run the full test suite (server + frontend component tests)
+npm test
 
-# Run API contract and flow tests
-python -m pytest tests/test_learning_api_flow.py -v
-python -m pytest tests/test_pedagogical_pipeline.py -v
+# Type-check the entire codebase
+npx tsc --noEmit
 ```
 
 ---

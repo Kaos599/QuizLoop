@@ -42,9 +42,9 @@ function toView(o: any): PlanObjectiveView {
       id: "obj_default",
       title: "Objective",
       description: "",
-      blooms_level: "Apply",
+      bloomsLevel: "Apply",
       difficulty: "Intermediate",
-      question_count: 1,
+      questionCount: 1,
       status: "pending",
     };
   }
@@ -52,46 +52,47 @@ function toView(o: any): PlanObjectiveView {
     id: o.id || "obj_default",
     title: o.title || o.topic || "Objective",
     description: o.description || "",
-    blooms_level: o.blooms_level || o.bloomsLevel || "Apply",
+    bloomsLevel: o.bloomsLevel || "Apply",
     difficulty: o.difficulty || "Intermediate",
-    question_count: Number(o.question_count ?? 1),
-    status: o.status,
+    questionCount: Number(o.questionCount ?? 1),
+    status: o.status || "pending",
+    keyConcepts: o.keyConcepts || [],
   };
 }
 
 function normalizeRaw(raw: any, sessionId: string): PedagogicalStateResponse {
   const rawPlan = raw.plan || [];
   const viewPlan: PlanObjectiveView[] = Array.isArray(rawPlan) ? rawPlan.map(toView) : [];
-  const pending = raw.pending_interrupt || raw.pendingInterrupt || null;
+  const pending = raw.pendingInterrupt || null;
 
-  const rawSummary = raw.summary || raw.masterySummary;
-  const rawPerObjective = rawSummary?.per_objective || rawSummary?.perObjective;
+  const rawSummary = raw.summary;
+  const rawPerObjective = rawSummary?.perObjective;
   const perObjective = Array.isArray(rawPerObjective)
     ? rawPerObjective.map((r: any) => ({
-        objectiveId: r.objective_id || r.objectiveId || "",
+        objectiveId: r.objectiveId || "",
         title: r.title || "",
         passed: Boolean(r.passed),
         attempts: Number(r.attempts ?? 0),
-        firstTry: Boolean(r.first_try ?? r.firstTry),
+        firstTry: Boolean(r.firstTry),
         comment: r.comment || "",
       }))
     : undefined;
 
-  const rawConfig = raw.quiz_config || raw.quizConfig;
-  const rawMcq = raw.current_mcq || raw.currentMCQ || raw.currentMcq;
-  const rawLastResult = raw.last_result || raw.lastResult;
+  const rawConfig = raw.quizConfig;
+  const rawMcq = raw.currentMcq;
+  const rawLastResult = raw.lastResult;
 
   return {
-    sessionId: raw.session_id || raw.sessionId || sessionId,
+    sessionId: raw.sessionId || sessionId,
     status: (raw.status || "planning") as PedagogicalStateResponse["status"],
-    planStatus: (raw.plan_status || raw.planStatus || "drafting") as PedagogicalStateResponse["planStatus"],
+    planStatus: (raw.planStatus || "drafting") as PedagogicalStateResponse["planStatus"],
     quizConfig: {
-      total_questions: Number(rawConfig?.total_questions ?? rawConfig?.totalQuestions ?? 5),
+      totalQuestions: Number(rawConfig?.totalQuestions ?? 5),
       difficulty: rawConfig?.difficulty ?? "auto",
     },
     plan: viewPlan,
     revision: Number(raw.revision ?? 0),
-    planCapReached: Boolean(raw.plan_cap_reached ?? raw.planCapReached),
+    planCapReached: Boolean(raw.planCapReached),
     slots: raw.slots
       ? {
           total: Number(raw.slots.total ?? 0),
@@ -99,8 +100,8 @@ function normalizeRaw(raw: any, sessionId: string): PedagogicalStateResponse {
           index: Number(raw.slots.index ?? 1),
         }
       : null,
-    currentObjectiveId: raw.current_objective?.id || raw.currentObjective?.id || raw.currentObjectiveId,
-    currentMCQ: rawMcq
+    currentObjective: raw.currentObjective ? toView(raw.currentObjective) : null,
+    currentMcq: rawMcq
       ? {
           question: rawMcq.question || rawMcq.scenario || "",
           scenario: rawMcq.scenario,
@@ -110,30 +111,30 @@ function normalizeRaw(raw: any, sessionId: string): PedagogicalStateResponse {
           })),
           hint: rawMcq.hint,
         }
-      : undefined,
-    hintRevealed: Boolean(raw.hint_revealed ?? raw.hintRevealed),
-    coachingMessage: raw.coaching_message ?? raw.coachingMessage ?? null,
+      : null,
+    hintRevealed: Boolean(raw.hintRevealed),
+    coachingMessage: raw.coachingMessage ?? null,
     lastResult: rawLastResult
       ? {
           verdict: rawLastResult.verdict,
           explanation: rawLastResult.explanation,
           hint: rawLastResult.hint,
-          diagnosticFeedback: rawLastResult.diagnostic_feedback || rawLastResult.diagnosticFeedback,
-          keyTakeaway: rawLastResult.key_takeaway || rawLastResult.keyTakeaway,
-          attemptNo: rawLastResult.attempt_no || rawLastResult.attemptNo,
-          selectedLetter: rawLastResult.selected_letter || rawLastResult.selectedLetter,
+          diagnosticFeedback: rawLastResult.diagnosticFeedback,
+          keyTakeaway: rawLastResult.keyTakeaway,
+          attemptNo: rawLastResult.attemptNo,
+          selectedLetter: rawLastResult.selectedLetter,
         }
-      : undefined,
+      : null,
     attempts: (raw.attempts || []).map((a: any) => ({
-      objectiveId: a.objective_id || a.objectiveId || "",
-      slotNo: Number(a.slot_no ?? a.slotNo ?? 0),
-      selectedLetter: a.selected_letter || a.selectedLetter,
-      isCorrect: Boolean(a.is_correct ?? a.isCorrect),
-      attemptNo: Number(a.attempt_no ?? a.attemptNo ?? 1),
+      objectiveId: a.objectiveId || "",
+      slotNo: Number(a.slotNo ?? 0),
+      selectedLetter: a.selectedLetter || "",
+      isCorrect: Boolean(a.isCorrect),
+      attemptNo: Number(a.attemptNo ?? 1),
       ts: Number(a.ts ?? 0),
     })),
-    questionsDeck: Array.isArray(raw.questions_deck || raw.questionsDeck)
-      ? (raw.questions_deck || raw.questionsDeck).map((m: any) => ({
+    questionsDeck: Array.isArray(raw.questionsDeck)
+      ? raw.questionsDeck.map((m: any) => ({
           question: m.question || m.scenario || "",
           scenario: m.scenario,
           options: (m.options || []).map((o: any) => ({
@@ -143,17 +144,17 @@ function normalizeRaw(raw: any, sessionId: string): PedagogicalStateResponse {
           hint: m.hint,
         }))
       : undefined,
-    masterySummary: rawSummary
+    summary: rawSummary
       ? {
           accuracy: Number(rawSummary.accuracy ?? 0),
-          firstTryCorrect: Number(rawSummary.first_try_correct ?? rawSummary.firstTryCorrect ?? 0),
-          totalAttempts: Number(rawSummary.total_attempts ?? rawSummary.totalAttempts ?? 0),
+          firstTryCorrect: Number(rawSummary.firstTryCorrect ?? 0),
+          totalAttempts: Number(rawSummary.totalAttempts ?? 0),
           perObjective: perObjective || [],
           strengths: rawSummary.strengths || [],
-          areasForReview: rawSummary.areas_for_review || rawSummary.areasForReview || [],
-          personalizedStudyTips: rawSummary.personalized_study_tips || rawSummary.personalizedStudyTips || [],
+          areasForReview: rawSummary.areasForReview || [],
+          personalizedStudyTips: rawSummary.personalizedStudyTips || [],
         }
-      : undefined,
+      : null,
     pendingInterrupt: pending
       ? {
           type: pending.type,
@@ -161,16 +162,16 @@ function normalizeRaw(raw: any, sessionId: string): PedagogicalStateResponse {
           prompt: pending.prompt,
           options: pending.options,
           revision: Number(pending.revision ?? 0),
-          capReached: Boolean(pending.cap_reached ?? pending.capReached),
-          maxRevisions: pending.max_revisions ?? pending.maxRevisions,
+          capReached: Boolean(pending.capReached),
+          maxRevisions: pending.maxRevisions,
           ...(pending.type === "quiz"
             ? {
                 questionIndex:
-                  Number(pending.question_index ?? pending.questionIndex ?? 1) <= 0
+                  Number(pending.questionIndex ?? 1) <= 0
                     ? 1
-                    : Number(pending.question_index ?? pending.questionIndex ?? 1),
-                totalQuestions: Number(pending.total_questions ?? pending.totalQuestions ?? 0),
-                objective: pending.objective ? toView(pending.objective) : ({} as PlanObjectiveView),
+                    : Number(pending.questionIndex ?? 1),
+                totalQuestions: Number(pending.totalQuestions ?? 0),
+                objective: pending.objective ? toView(pending.objective) : null,
                 mcq: pending.mcq
                   ? {
                       question: pending.mcq.question || pending.mcq.scenario || "",
@@ -181,18 +182,18 @@ function normalizeRaw(raw: any, sessionId: string): PedagogicalStateResponse {
                       })),
                       hint: pending.mcq.hint,
                     }
-                  : ({} as MCQItem),
-                hintRevealed: Boolean(pending.hint_revealed ?? pending.hintRevealed),
-                coachingMessage: pending.coaching_message ?? pending.coachingMessage ?? null,
-                lastResult: (pending.last_result || pending.lastResult)
+                  : null,
+                hintRevealed: Boolean(pending.hintRevealed),
+                coachingMessage: pending.coachingMessage ?? null,
+                lastResult: pending.lastResult
                   ? ({
-                      verdict: (pending.last_result || pending.lastResult).verdict,
-                      explanation: (pending.last_result || pending.lastResult).explanation,
-                      hint: (pending.last_result || pending.lastResult).hint,
-                      diagnosticFeedback: (pending.last_result || pending.lastResult).diagnostic_feedback || (pending.last_result || pending.lastResult).diagnosticFeedback,
-                      keyTakeaway: (pending.last_result || pending.lastResult).key_takeaway || (pending.last_result || pending.lastResult).keyTakeaway,
-                      attemptNo: (pending.last_result || pending.lastResult).attempt_no || (pending.last_result || pending.lastResult).attemptNo,
-                      selectedLetter: (pending.last_result || pending.lastResult).selected_letter || (pending.last_result || pending.lastResult).selectedLetter,
+                      verdict: pending.lastResult.verdict,
+                      explanation: pending.lastResult.explanation,
+                      hint: pending.lastResult.hint,
+                      diagnosticFeedback: pending.lastResult.diagnosticFeedback,
+                      keyTakeaway: pending.lastResult.keyTakeaway,
+                      attemptNo: pending.lastResult.attemptNo,
+                      selectedLetter: pending.lastResult.selectedLetter,
                     } as LastResult)
                   : null,
               }
@@ -279,8 +280,8 @@ export function PedagogicalWorkspace({ sessionId }: PedagogicalWorkspaceProps) {
 
   const planStatus = state?.planStatus;
   const sessionStatus = state?.status;
-  const hasCurrentMCQ = Boolean(state?.currentMCQ);
-  const hasMasterySummary = Boolean(state?.masterySummary);
+  const hasCurrentMCQ = Boolean(state?.currentMcq);
+  const hasMasterySummary = Boolean(state?.summary);
 
   // Polling ONLY while background work is actually pending AND no request
   // already covers the wait (approve/adjust POSTs await the pipeline, so their
@@ -305,7 +306,7 @@ export function PedagogicalWorkspace({ sessionId }: PedagogicalWorkspaceProps) {
   }, [planStatus, sessionStatus, hasCurrentMCQ, hasMasterySummary, isAdjustingPlan, isApprovingPlan, fetchState]);
 
   // Poll the background task (approve/adjust/learn-more) until it resolves.
-  // The HTTP POST returns a task_id instantly, so a 30-60s LLM run can never
+  // The HTTP POST returns a taskId instantly, so a 30-60s LLM run can never
   // hit a proxy/browser timeout; real failures surface via the task record.
   const taskPollInFlightRef = useRef(false);
 
@@ -355,12 +356,12 @@ export function PedagogicalWorkspace({ sessionId }: PedagogicalWorkspaceProps) {
       setActionError(null);
       setBusy(true);
       try {
-        const res = await postJSON<{ task_id?: string; taskId?: string; state?: unknown }>(
+        const res = await postJSON<{ taskId?: string; state?: unknown }>(
           url,
           body,
         );
         if (res?.state) setState(normalizeRaw(res.state, sessionId));
-        const taskId = res?.task_id || res?.taskId;
+        const taskId = res?.taskId;
         if (taskId) {
           setActiveTask({ id: taskId, action });
           return taskId;
@@ -410,7 +411,7 @@ export function PedagogicalWorkspace({ sessionId }: PedagogicalWorkspaceProps) {
   /* ---- quiz ---- */
   const handleSubmitAnswer = async (letter: string): Promise<SubmitAnswerResponse> => {
     const data = await postJSON<SubmitAnswerResponse>(`/api/learning/${sessionId}/submit-mcq`, {
-      selected_letter: letter,
+      selectedLetter: letter,
     });
     fetchState();
     return data;
@@ -433,7 +434,7 @@ export function PedagogicalWorkspace({ sessionId }: PedagogicalWorkspaceProps) {
   const currentObjective = useMemo(() => {
     if (!state) return undefined;
     return (
-      state.plan.find((o) => o.id === state.currentObjectiveId) ??
+      state.plan.find((o) => o.id === state.currentObjective?.id) ??
       state.plan[0]
     );
   }, [state]);
@@ -645,10 +646,10 @@ export function PedagogicalWorkspace({ sessionId }: PedagogicalWorkspaceProps) {
 
           {/* Phase 2: Quiz */}
           {phase === 2 &&
-            (state.currentMCQ ? (
+            (state.currentMcq ? (
               <div className="animate-in fade-in slide-in-from-bottom-3 duration-300">
                 <MCQGenUIWidget
-                  mcq={state.currentMCQ}
+                  mcq={state.currentMcq}
                   objective={(state.pendingInterrupt as any)?.objective
                     ? (state.pendingInterrupt as any).objective
                     : toView(currentObjective || {})}
@@ -690,9 +691,9 @@ export function PedagogicalWorkspace({ sessionId }: PedagogicalWorkspaceProps) {
             ))}
 
           {/* Phase 3: Report */}
-          {phase === 3 && state.masterySummary && (
+          {phase === 3 && state.summary && (
             <div className="animate-in fade-in slide-in-from-bottom-3 duration-300">
-              <MasteryReportCard summary={state.masterySummary} />
+              <MasteryReportCard summary={state.summary} />
             </div>
           )}
         </div>

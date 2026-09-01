@@ -230,7 +230,7 @@ export function PlanApprovalCard({
           {/* Config summary chips */}
           <div className="flex flex-wrap gap-2 justify-start sm:justify-end shrink-0">
             <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-white/10 border border-white/15 text-slate-200">
-              {quizConfig.total_questions} questions
+              {quizConfig.totalQuestions} questions
             </span>
             <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-white/10 border border-white/15 text-slate-200">
               {difficultyLabel[quizConfig.difficulty] ?? quizConfig.difficulty}
@@ -259,7 +259,7 @@ export function PlanApprovalCard({
             </span>
             <span className="text-xs text-slate-400">•</span>
             <span className="text-xs font-medium text-slate-500">
-              {plan.reduce((s, o) => s + (o.question_count ?? o.questionCount ?? 1), 0)} questions total
+              {plan.reduce((s, o) => s + (o.questionCount ?? 1), 0)} questions total
             </span>
           </div>
 
@@ -303,7 +303,7 @@ export function PlanApprovalCard({
             const hasNote = Boolean(topicNotes[topicKey]?.trim());
             const isEditingComment = editingTopicId === topicKey;
             const isRecentlyAdjusted = lastAdjustedIds.includes(topicKey) || (revision > 0 && lastAdjustedIds.length === 0 && index === 0);
-            const bloomsKey = (obj.blooms_level || "Apply").toLowerCase();
+            const bloomsKey = (obj.bloomsLevel || "Apply").toLowerCase();
             const difficultyKey = (obj.difficulty || "Intermediate").toLowerCase();
 
             return (
@@ -356,7 +356,7 @@ export function PlanApprovalCard({
                       </div>
                       <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 shrink-0">
                         <SlidersHorizontal className="w-3 h-3" />
-                        {obj.question_count ?? obj.questionCount ?? 1} question{(obj.question_count ?? obj.questionCount ?? 1) === 1 ? "" : "s"}
+                        {obj.questionCount ?? 1} question{(obj.questionCount ?? 1) === 1 ? "" : "s"}
                       </span>
                     </div>
                     <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
@@ -373,7 +373,7 @@ export function PlanApprovalCard({
                           bloomsBadgeColors[bloomsKey] || "bg-slate-100 text-slate-800 border-slate-200"
                         )}
                       >
-                        Level: {obj.blooms_level || obj.bloomsLevel || "Apply"}
+                        Level: {obj.bloomsLevel || "Apply"}
                       </span>
                       <span
                         className={cn(

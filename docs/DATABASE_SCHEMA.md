@@ -13,9 +13,11 @@ erDiagram
         VARCHAR pdf_filename
         TEXT file_uri
         TEXT gemini_file_uri
+        TEXT pdf_content
         VARCHAR status
         BIGINT input_tokens
         BIGINT output_tokens
+        BIGINT thought_tokens
         BIGINT total_tokens
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
@@ -54,7 +56,9 @@ erDiagram
         VARCHAR node_name
         VARCHAR model_name
         INTEGER prompt_tokens
+        INTEGER thought_tokens
         INTEGER output_tokens
+        INTEGER total_tokens
         INTEGER latency_ms
         TIMESTAMPTZ created_at
     }
@@ -73,9 +77,11 @@ The primary session ledger created upon document upload.
 | `pdf_filename` | `VARCHAR(255)` | `NULLABLE` | Original uploaded document name. |
 | `file_uri` | `TEXT` | `NULLABLE` | Supabase storage bucket file path. |
 | `gemini_file_uri` | `TEXT` | `NULLABLE` | Google Gemini File API URI. |
-| `status` | `VARCHAR(50)` | `NOT NULL, DEFAULT 'uploading'` | Lifecycle status (`uploading`, `ready`, `failed`). |
+| `pdf_content` | `TEXT` | `NULLABLE` | Base64 document content fallback. |
+| `status` | `VARCHAR(50)` | `NOT NULL, DEFAULT 'uploading'` | Lifecycle status (`uploading`, `ready`, `generating`, `active`, `completed`, `failed`). |
 | `input_tokens` | `BIGINT` | `NOT NULL, DEFAULT 0` | Total prompt tokens consumed. |
 | `output_tokens` | `BIGINT` | `NOT NULL, DEFAULT 0` | Total completion tokens generated. |
+| `thought_tokens` | `BIGINT` | `NOT NULL, DEFAULT 0` | Thinking/CoT tokens consumed. |
 | `total_tokens` | `BIGINT` | `NOT NULL, DEFAULT 0` | Cumulative token usage. |
 | `created_at` | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | Ingestion timestamp. |
 | `updated_at` | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | Last update timestamp. |
@@ -130,6 +136,8 @@ Audit ledger tracking token expenditures per agent node execution.
 | `node_name` | `VARCHAR(100)` | `NOT NULL` | Agent node name (`plan_node`, `generate_mcq_node`, `teach_more_node`, etc.). |
 | `model_name` | `VARCHAR(100)` | `NOT NULL` | LLM model identifier (`gemini-3.7-flash`). |
 | `prompt_tokens` | `INTEGER` | `NOT NULL, DEFAULT 0` | Input token count. |
+| `thought_tokens` | `INTEGER` | `NOT NULL, DEFAULT 0` | Thinking/CoT token count. |
 | `output_tokens` | `INTEGER` | `NOT NULL, DEFAULT 0` | Generated token count. |
+| `total_tokens` | `INTEGER` | `NOT NULL, DEFAULT 0` | Total tokens for the call. |
 | `latency_ms` | `INTEGER` | `NOT NULL, DEFAULT 0` | Execution latency in milliseconds. |
 | `created_at` | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | Timestamp. |

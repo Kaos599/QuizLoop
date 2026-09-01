@@ -97,13 +97,13 @@ export function PDFUpload({ className }: PDFUploadProps) {
         let errorDetails = "Failed to upload document.";
         try {
           const errData = await res.json();
-          errorDetails = errData.detail || errData.error || errorDetails;
+          errorDetails = errData.error || errorDetails;
         } catch {}
         throw new Error(errorDetails);
       }
 
       const data = await res.json();
-      const sid = data.sessionId || data.session_id;
+      const sid = data.sessionId;
       if (!sid) {
         throw new Error("No session id received from upload server.");
       }
@@ -169,7 +169,7 @@ export function PDFUpload({ className }: PDFUploadProps) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          total_questions: totalQuestions,
+          totalQuestions: totalQuestions,
           difficulty: difficulty,
         }),
       });
@@ -178,7 +178,7 @@ export function PDFUpload({ className }: PDFUploadProps) {
         let genError = "Failed to initiate quiz generation.";
         try {
           const errData = await genRes.json();
-          genError = errData.detail || errData.error || genError;
+          genError = errData.error || genError;
         } catch {}
         throw new Error(genError);
       }
