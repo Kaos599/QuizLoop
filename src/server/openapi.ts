@@ -486,6 +486,20 @@ export const openApiSpec = {
             nullable: true,
             description: "Prompt-based guidance or topic focus adjustment for revision",
           },
+          topicFeedback: {
+            type: "array",
+            nullable: true,
+            description:
+              "Per-topic revision notes. When present, ONLY the listed objectives are surgically rewritten and all others are preserved byte-for-byte. Leave null/empty to re-draft the entire plan with the overall feedback message.",
+            items: {
+              type: "object",
+              properties: {
+                objectiveId: { type: "string" },
+                note: { type: "string" },
+              },
+              required: ["objectiveId", "note"],
+            },
+          },
         },
         required: ["decision"],
       },

@@ -40,6 +40,7 @@ export async function POST(
         {
           decision: validatedBody.decision,
           feedback: validatedBody.feedback,
+          topicFeedback: validatedBody.topicFeedback,
         },
         true
       );

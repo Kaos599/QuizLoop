@@ -52,6 +52,11 @@ const QUICK_SUGGESTIONS = [
   "Simplify this topic",
 ];
 
+interface TopicFeedbackItem {
+  objectiveId: string;
+  note: string;
+}
+
 interface PlanApprovalCardProps {
   plan: PlanObjectiveView[];
   quizConfig: QuizConfig;
@@ -59,8 +64,9 @@ interface PlanApprovalCardProps {
   capReached: boolean;
   clarifyOptions?: string[];
   isBusy?: boolean;
+  recentlyAdjustedIds?: string[];
   onApprove: () => void;
-  onAdjust: (feedback: string) => void;
+  onAdjust: (feedback: string, topicFeedback: TopicFeedbackItem[]) => void;
   onRejectAll: () => void;
 }
 
@@ -71,6 +77,7 @@ export function PlanApprovalCard({
   capReached,
   clarifyOptions,
   isBusy = false,
+  recentlyAdjustedIds = [],
   onApprove,
   onAdjust,
   onRejectAll,
@@ -87,8 +94,6 @@ export function PlanApprovalCard({
   
   // Saved topic notes: { [topicId]: "note text" }
   const [topicNotes, setTopicNotes] = useState<Record<string, string>>({});
-  // Track which topic IDs received feedback in the last adjustment
-  const [lastAdjustedIds, setLastAdjustedIds] = useState<string[]>([]);
 
   const toggleTopicReview = (id: string) => {
     setReviewedMap((prev) => ({
@@ -153,37 +158,22 @@ export function PlanApprovalCard({
 
   const submitAdjustment = (feedbackText?: string) => {
     if (feedbackText) {
-      onAdjust(feedbackText);
+      onAdjust(feedbackText, []);
       setAdjustOpen(false);
       return;
     }
 
-    const topicFeedbackParts = Object.entries(topicNotes)
+    // Structured per-topic feedback (preserves objective IDs so the backend
+    // can surgically revise only the targeted topics).
+    const topicFeedback: TopicFeedbackItem[] = Object.entries(topicNotes)
       .filter(([, note]) => note.trim().length > 0)
-      .map(([id, note]) => {
-        const obj = plan.find((p, idx) => (p.id || String(idx)) === id);
-        const title = obj ? obj.title : `Topic ${id}`;
-        return `- ${title}: ${note.trim()}`;
-      });
+      .map(([id, note]) => ({ objectiveId: id, note: note.trim() }));
 
     const generalNote = feedback.trim();
-    const parts: string[] = [];
+    if (!generalNote && topicFeedback.length === 0) return;
 
-    if (generalNote) {
-      parts.push(generalNote);
-    }
-    if (topicFeedbackParts.length > 0) {
-      parts.push(`Topic-specific instructions:\n${topicFeedbackParts.join("\n")}`);
-    }
-
-    const consolidated = parts.join("\n\n");
-    if (!consolidated) return;
-
-    // Remember which topics had feedback
-    const idsWithNotes = Object.keys(topicNotes).filter((k) => topicNotes[k]?.trim());
-    setLastAdjustedIds(idsWithNotes);
     setTopicNotes({});
-    onAdjust(consolidated);
+    onAdjust(generalNote, topicFeedback);
     setAdjustOpen(false);
     setFeedback("");
   };
@@ -302,7 +292,7 @@ export function PlanApprovalCard({
             const isReviewed = Boolean(reviewedMap[topicKey]);
             const hasNote = Boolean(topicNotes[topicKey]?.trim());
             const isEditingComment = editingTopicId === topicKey;
-            const isRecentlyAdjusted = lastAdjustedIds.includes(topicKey) || (revision > 0 && lastAdjustedIds.length === 0 && index === 0);
+            const isRecentlyAdjusted = recentlyAdjustedIds.includes(topicKey);
             const bloomsKey = (obj.bloomsLevel || "Apply").toLowerCase();
             const difficultyKey = (obj.difficulty || "Intermediate").toLowerCase();
 

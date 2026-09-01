@@ -52,9 +52,16 @@ export const PlanArraySchema = z.object({
 });
 export type PlanArray = z.infer<typeof PlanArraySchema>;
 
+export const TopicFeedbackSchema = z.object({
+  objectiveId: z.string(),
+  note: z.string(),
+});
+export type TopicFeedback = z.infer<typeof TopicFeedbackSchema>;
+
 export const PlanApprovalRequestSchema = z.object({
   decision: z.enum(["approve", "adjust", "reject_all"]).default("approve"),
   feedback: z.string().nullable().default(null),
+  topicFeedback: z.array(TopicFeedbackSchema).nullable().default(null),
 });
 export type PlanApprovalRequest = z.infer<typeof PlanApprovalRequestSchema>;
 

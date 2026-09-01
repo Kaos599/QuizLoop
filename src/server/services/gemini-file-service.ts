@@ -6,14 +6,23 @@ import { getServerConfig } from "../config";
 import { downloadPdfFromSupabase } from "./supabase-storage";
 import { getGeminiClient } from "../agents/gemini-client";
 
+// The Gemini Developer File API only works with a real Developer API key.
+// Vertex-style credentials (empty key, or "AQ."-prefixed tokens used with the
+// Vertex AI global endpoint) must skip the File API entirely and transmit
+// document bytes inline instead of hitting a depleted/unauthorized endpoint.
+function usesDeveloperFileApi(): boolean {
+  const config = getServerConfig();
+  return Boolean(config.geminiApiKey && !config.geminiApiKey.startsWith("AQ."));
+}
+
 export async function uploadFileToGemini(
   filePathOrBuffer: string | Buffer,
   mimeType = "application/pdf"
 ): Promise<string> {
-  const config = getServerConfig();
-
-  // If using Google Cloud Vertex AI without Developer API key, return the file path directly
-  if (config.googleCloudProject && !config.geminiApiKey) {
+  // Vertex AI global endpoint mode (project configured and/or Vertex-style
+  // AQ. credential): bypass the Developer File API and return the file path
+  // directly; the graph transmits bytes via inlineData instead.
+  if (!usesDeveloperFileApi()) {
     if (typeof filePathOrBuffer === "string") {
       return filePathOrBuffer;
     }
@@ -127,10 +136,9 @@ export async function ensureValidGeminiFile(
   fileUri: string | null,
   fileName: string | null
 ): Promise<string> {
-  const client = getGeminiClient();
-
-  if (fileUri && fileUri.startsWith("https://generativelanguage.googleapis.com")) {
+  if (usesDeveloperFileApi() && fileUri && fileUri.startsWith("https://generativelanguage.googleapis.com")) {
     try {
+      const client = getGeminiClient();
       const parts = fileUri.split("/");
       const fileId = parts[parts.length - 1];
       const fileInfo = await client.files.get({ name: `files/${fileId}` });

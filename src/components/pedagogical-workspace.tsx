@@ -277,6 +277,9 @@ export function PedagogicalWorkspace({ sessionId }: PedagogicalWorkspaceProps) {
   const [isAdjustingPlan, setIsAdjustingPlan] = useState(false);
   const [isApprovingPlan, setIsApprovingPlan] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  // Persist which topic IDs were just refined so the "Refined based on your
+  // note" badge survives the card unmount during the re-draft.
+  const [recentlyAdjustedIds, setRecentlyAdjustedIds] = useState<string[]>([]);
 
   const planStatus = state?.planStatus;
   const sessionStatus = state?.status;
@@ -388,11 +391,19 @@ export function PedagogicalWorkspace({ sessionId }: PedagogicalWorkspaceProps) {
     if (!taskId) setIsApprovingPlan(false);
   };
 
-  const handleAdjustPlan = async (feedback: string) => {
+  const handleAdjustPlan = async (
+    feedback: string,
+    topicFeedback: { objectiveId: string; note: string }[] = [],
+  ) => {
     setIsAdjustingPlan(true);
+    setRecentlyAdjustedIds(topicFeedback.map((t) => t.objectiveId));
     const taskId = await dispatchTask(
       `/api/learning/${sessionId}/approve-plan`,
-      { decision: "adjust", feedback },
+      {
+        decision: "adjust",
+        feedback,
+        topicFeedback: topicFeedback.length > 0 ? topicFeedback : null,
+      },
       "plan_approval",
     );
     if (!taskId) setIsAdjustingPlan(false);
@@ -620,6 +631,7 @@ export function PedagogicalWorkspace({ sessionId }: PedagogicalWorkspaceProps) {
                 capReached={(state.pendingInterrupt as any)?.capReached ?? state.planCapReached}
                 clarifyOptions={reviewMode === "clarify" ? (state.pendingInterrupt as any)?.options : undefined}
                 isBusy={busy || isApprovingPlan}
+                recentlyAdjustedIds={recentlyAdjustedIds}
                 onApprove={handleApprovePlan}
                 onAdjust={handleAdjustPlan}
                 onRejectAll={handleRejectAll}

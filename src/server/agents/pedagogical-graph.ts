@@ -43,6 +43,7 @@ export const PedagogicalAnnotation = Annotation.Root({
   plan: Annotation<PlanObjective[] | null>,
   revision: Annotation<number>,
   planFeedback: Annotation<string | null>,
+  topicFeedback: Annotation<{ objectiveId: string; note: string }[] | null>,
   planStatus: Annotation<"drafting" | "review" | "approved" | "completed" | "failed">,
   planCapReached: Annotation<boolean>,
   slots: Annotation<Slot[] | null>,
@@ -521,6 +522,131 @@ export async function planNode(state: PedagogicalState): Promise<Partial<Pedagog
   };
 }
 
+async function rewriteSingleObjective(
+  obj: PlanObjective,
+  note: string,
+  filePart: any,
+  cfg: Record<string, any>,
+  sessionId: string
+): Promise<PlanObjective> {
+  const instruction =
+    "You are an expert pedagogical planner revising ONE learning objective based on student feedback.\n" +
+    "ONLY revise this single objective. Keep its id and status unchanged.\n\n" +
+    "CURRENT OBJECTIVE:\n" +
+    JSON.stringify(
+      {
+        id: obj.id,
+        title: obj.title,
+        description: obj.description,
+        bloomsLevel: obj.bloomsLevel || "Apply",
+        difficulty: obj.difficulty || "Intermediate",
+        questionCount: Number(obj.questionCount || 1),
+        keyConcepts: obj.keyConcepts || [],
+      },
+      null,
+      2
+    ) +
+    "\n\nSTUDENT FEEDBACK ON THIS TOPIC:\n" +
+    `'''${note}'''\n\n` +
+    "TASK AND RULES:\n" +
+    "1. Address the feedback with meaningful, clearly visible improvements to THIS objective only.\n" +
+    "2. If the student asked to 'Simplify this topic', rewrite the title and description to be fundamentally accessible, intuitive, and focused on core concepts without dense jargon.\n" +
+    "3. If the student asked to 'Make questions more advanced' or 'Go deeper', elevate the Bloom's taxonomy level (e.g. to Analyze/Evaluate) and sharpen the technical depth.\n" +
+    `4. ${difficultyInstruction(cfg)}\n` +
+    "5. Keep the id identical to the current objective's id.\n" +
+    "6. Ensure the objective includes 3-5 clear 'keyConcepts' that questions will target.\n" +
+    "7. Return JSON conforming to the schema containing exactly ONE objective.";
+
+  const respText = await generateGeminiContent({
+    contents: [filePart, instruction],
+    systemInstruction: "You are a curriculum architect. Respond only with the JSON plan conforming to the schema.",
+    responseSchema: PlanArraySchema,
+    thinkingBudget: 0,
+    sessionId,
+    nodeName: "plan_surgical_revision",
+  });
+
+  const rawPlan = extractItemsFromJson(respText, ["objectives", "plan", "items"]);
+  const item = Array.isArray(rawPlan) && rawPlan.length > 0 ? rawPlan[0] : rawPlan;
+  if (!item || typeof item !== "object") {
+    throw new Error("Surgical revision returned an empty objective.");
+  }
+
+  return {
+    id: obj.id,
+    title: item.title || obj.title,
+    description: item.description || obj.description,
+    bloomsLevel: item.bloomsLevel || item.blooms_level || obj.bloomsLevel || "Apply",
+    difficulty: item.difficulty || obj.difficulty || "Intermediate",
+    questionCount: Number(item.questionCount ?? obj.questionCount ?? 1),
+    keyConcepts: item.keyConcepts || item.key_concepts || obj.keyConcepts || [],
+    status: "pending",
+  };
+}
+
+export async function surgicallyRevisePlanNode(state: PedagogicalState): Promise<Partial<PedagogicalState>> {
+  const cfg = (state.quizConfig || DEFAULT_QUIZ_CONFIG) as Record<string, any>;
+  const totalQuestions = Math.max(1, Number(cfg.totalQuestions ?? cfg.total_questions ?? 5));
+  const existingPlan = state.plan || [];
+  const topicFeedback = state.topicFeedback || [];
+  const filePart = await getGeminiPartForFile(state.fileUri);
+
+  const feedbackById = new Map<string, string>();
+  for (const tf of topicFeedback) {
+    if (tf?.objectiveId && (tf.note || "").trim()) {
+      feedbackById.set(tf.objectiveId, tf.note.trim());
+    }
+  }
+
+  // Byte-for-byte preserve untouched objectives; surgically rewrite only the targeted ones
+  const plan: PlanObjective[] = [];
+  for (const obj of existingPlan) {
+    const objId = obj.id || "";
+    const note = feedbackById.get(objId);
+    if (!note) {
+      plan.push(obj);
+      continue;
+    }
+    const revised = await rewriteSingleObjective(obj, note, filePart, cfg, state.sessionId);
+    plan.push({ ...obj, ...revised, id: objId, status: "pending" });
+  }
+
+  // Rebalance ONLY the targeted objectives so the total still equals totalQuestions,
+  // leaving untouched objectives' questionCounts intact.
+  const targetIds = new Set(feedbackById.keys());
+  const fixed = plan.reduce(
+    (s, o) => s + (targetIds.has(o.id || "") ? 0 : Number(o.questionCount || 1)),
+    0
+  );
+  const targets = plan.filter((o) => targetIds.has(o.id || ""));
+  const remaining = Math.max(targets.length, totalQuestions - fixed);
+  const budget = distributeQuestionBudget(targets, remaining);
+  let ti = 0;
+  const balanced = plan.map((o) => {
+    if (targetIds.has(o.id || "")) {
+      const b = budget[ti] ?? 1;
+      ti += 1;
+      return { ...o, questionCount: b };
+    }
+    return o;
+  });
+
+  return {
+    plan: balanced,
+    planStatus: "review",
+    planCapReached: false,
+    planFeedback: null,
+    topicFeedback: null,
+    revision: state.revision ?? 0,
+    slots: null,
+    activeSlot: null,
+    currentMcq: null,
+    lastResult: null,
+    hintRevealed: false,
+    coachingMessage: null,
+  };
+}
+
 export function planReviewNode(state: PedagogicalState): Command {
   const cfg = state.quizConfig || DEFAULT_QUIZ_CONFIG;
   const revision = state.revision ?? 0;
@@ -547,6 +673,11 @@ export function planReviewNode(state: PedagogicalState): Command {
 
   const kind = decision?.decision || "adjust";
   const feedback = (decision?.feedback || "").trim();
+  const topicFeedback = Array.isArray(decision?.topicFeedback)
+    ? decision.topicFeedback.filter(
+        (t: any) => t?.objectiveId && (t?.note || "").trim()
+      )
+    : [];
 
   if (kind === "approve") {
     const plan = state.plan || [];
@@ -590,6 +721,21 @@ export function planReviewNode(state: PedagogicalState): Command {
         revision: newRevision,
         planFeedback: feedback,
         plan: null,
+        planStatus: "drafting",
+      },
+    });
+  }
+
+  // Per-topic surgical revision: rewrite ONLY the targeted objective(s),
+  // preserving all other topics byte-for-byte.
+  if (topicFeedback.length > 0) {
+    return new Command({
+      goto: "surgicallyRevisePlanNode",
+      update: {
+        revision: newRevision,
+        planFeedback: feedback || null,
+        topicFeedback,
+        plan: state.plan,
         planStatus: "drafting",
       },
     });
@@ -1157,8 +1303,9 @@ export async function summarizeLessonNode(state: PedagogicalState): Promise<Part
 export function buildPedagogicalGraph() {
   return new StateGraph(PedagogicalAnnotation)
     .addNode("plan_node", planNode)
+    .addNode("surgicallyRevisePlanNode", surgicallyRevisePlanNode)
     .addNode("plan_review_node", planReviewNode, {
-      ends: ["generate_mcq_batch_node", "simplify_plan_node", "plan_clarify_node", "plan_node"],
+      ends: ["generate_mcq_batch_node", "simplify_plan_node", "plan_clarify_node", "plan_node", "surgicallyRevisePlanNode"],
     })
     .addNode("plan_clarify_node", planClarifyNode, {
       ends: ["generate_mcq_batch_node", "plan_node"],
@@ -1183,6 +1330,7 @@ export function buildPedagogicalGraph() {
     .addEdge(START, "plan_node")
     .addEdge("plan_node", "plan_review_node")
     .addEdge("simplify_plan_node", "plan_review_node")
+    .addEdge("surgicallyRevisePlanNode", "plan_review_node")
     .addEdge("summarize_lesson_node", END);
 }
 
