@@ -266,4 +266,32 @@ describe("Per-Topic Surgical Plan Revision", () => {
     const obj3 = review.plan.find((o: any) => o.id === "obj-3");
     expect(obj3.questionCount).toBe(1);
   });
+
+  it("passes overall feedback into the surgical rewrite alongside the topic note", async () => {
+    const { lastSurgicalInput } = installLlmMocks();
+    const graph = buildTestGraph();
+    const config = { configurable: { thread_id: "surg4" } };
+
+    await startGraph(graph, config, {
+      sessionId: "surg4",
+      fileUri: "file://x",
+      quizConfig: { totalQuestions: 3 },
+      attempts: [],
+    });
+
+    await resumeGraph(graph, config, {
+      decision: "adjust",
+      feedback: "Keep the tone friendly and approachable",
+      topicFeedback: [{ objectiveId: "obj-1", note: "Simplify this topic" }],
+    });
+
+    const review = await getInterruptValue(graph, config);
+    expect(review.type).toBe("plan_review");
+    // Both the topic note and the overall feedback reach the surgical prompt
+    expect(lastSurgicalInput.text).toContain("Simplify this topic");
+    expect(lastSurgicalInput.text).toContain("Keep the tone friendly and approachable");
+    // Untouched topics still preserved
+    const obj3 = review.plan.find((o: any) => o.id === "obj-3");
+    expect(obj3.title).toBe("Embedding Layers");
+  });
 });

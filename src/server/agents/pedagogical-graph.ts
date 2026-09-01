@@ -525,10 +525,16 @@ export async function planNode(state: PedagogicalState): Promise<Partial<Pedagog
 async function rewriteSingleObjective(
   obj: PlanObjective,
   note: string,
+  generalFeedback: string | null,
   filePart: any,
   cfg: Record<string, any>,
   sessionId: string
 ): Promise<PlanObjective> {
+  const generalContext =
+    generalFeedback && generalFeedback.trim()
+      ? `\n\nOVERALL STUDENT FEEDBACK (also apply where relevant to this objective):\n'''${generalFeedback.trim()}'''`
+      : "";
+
   const instruction =
     "You are an expert pedagogical planner revising ONE learning objective based on student feedback.\n" +
     "ONLY revise this single objective. Keep its id and status unchanged.\n\n" +
@@ -547,8 +553,9 @@ async function rewriteSingleObjective(
       2
     ) +
     "\n\nSTUDENT FEEDBACK ON THIS TOPIC:\n" +
-    `'''${note}'''\n\n` +
-    "TASK AND RULES:\n" +
+    `'''${note}'''` +
+    generalContext +
+    "\n\nTASK AND RULES:\n" +
     "1. Address the feedback with meaningful, clearly visible improvements to THIS objective only.\n" +
     "2. If the student asked to 'Simplify this topic', rewrite the title and description to be fundamentally accessible, intuitive, and focused on core concepts without dense jargon.\n" +
     "3. If the student asked to 'Make questions more advanced' or 'Go deeper', elevate the Bloom's taxonomy level (e.g. to Analyze/Evaluate) and sharpen the technical depth.\n" +
@@ -607,7 +614,14 @@ export async function surgicallyRevisePlanNode(state: PedagogicalState): Promise
       plan.push(obj);
       continue;
     }
-    const revised = await rewriteSingleObjective(obj, note, filePart, cfg, state.sessionId);
+    const revised = await rewriteSingleObjective(
+      obj,
+      note,
+      state.planFeedback,
+      filePart,
+      cfg,
+      state.sessionId
+    );
     plan.push({ ...obj, ...revised, id: objId, status: "pending" });
   }
 
@@ -1437,6 +1451,14 @@ export async function resumePedagogicalPipeline(
       if (current && current.values) {
         await syncStateToDb(current.values);
       }
+    }
+    // Final sync after the stream drains: the in-loop getState can race the
+    // checkpointer and persist a transient drafting state. Re-reading after
+    // the stream ends guarantees the DB snapshot matches the final
+    // post-interrupt state (e.g. plan_status 'review' with the new plan).
+    const finalState = await graph.getState(config);
+    if (finalState && finalState.values) {
+      await syncStateToDb(finalState.values);
     }
     return true;
   } catch (err) {
