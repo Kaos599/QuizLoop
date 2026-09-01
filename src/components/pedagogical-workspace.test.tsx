@@ -19,24 +19,24 @@ function jsonResponse(data: unknown, ok = true, status = 200): Response {
 }
 
 const REVIEW_STATE = {
-  session_id: "sess-1",
+  sessionId: "sess-1",
   status: "planning",
-  plan_status: "review",
+  planStatus: "review",
   revision: 0,
-  plan_cap_reached: false,
-  quiz_config: { total_questions: 3, difficulty: "auto" },
+  planCapReached: false,
+  quizConfig: { totalQuestions: 3, difficulty: "auto" },
   plan: [
     {
       id: "obj-1",
       title: "Model Architecture",
       description: "Understand the architecture.",
-      blooms_level: "Apply",
+      bloomsLevel: "Apply",
       difficulty: "Intermediate",
-      question_count: 2,
+      questionCount: 2,
       status: "pending",
     },
   ],
-  current_mcq: null,
+  currentMcq: null,
   slots: null,
   attempts: [],
 };

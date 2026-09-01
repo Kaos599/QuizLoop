@@ -114,15 +114,15 @@ export function MCQGenUIWidget({
         setVerdict("correct");
         setFeedback({
           explanation: res.explanation,
-          keyTakeaway: res.keyTakeaway || res.key_takeaway,
+          keyTakeaway: res.keyTakeaway,
         });
-        const nextQ = res.nextMCQ || res.nextMcq || res.next_mcq;
+        const nextQ = res.nextMcq;
         setPendingNext(nextQ || null);
       } else {
         setVerdict("incorrect");
         setFeedback({
           hint: res.hint,
-          diagnosticFeedback: res.diagnosticFeedback || res.diagnostic_feedback,
+          diagnosticFeedback: res.diagnosticFeedback,
         });
         setHintVisible(true);
         if (res.hint) setHintText(res.hint);
@@ -231,7 +231,7 @@ export function MCQGenUIWidget({
           <Badge variant="teal" className="text-[11px] font-semibold">
             Question {Math.min(questionIndex, totalQuestions)} of {totalQuestions}
           </Badge>
-          {objective?.blooms_level && (
+          {objective?.bloomsLevel && (
             <Badge variant="outline" className="text-[11px] font-semibold hidden sm:inline-flex">
               {objective.difficulty}
             </Badge>

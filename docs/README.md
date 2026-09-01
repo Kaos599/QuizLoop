@@ -52,7 +52,7 @@ QuizLoop transforms static technical documents (PDF research papers, textbooks, 
 ```
 
 1. **Document Ingestion**: Upload dense research or technical PDFs with automatic Gemini File API registration and token-aware context caching.
-2. **Curriculum Design**: Gemini 3.7 analyzes document structure and drafts 3 to 5 core learning objectives with proportional question allocations.
+2. **Curriculum Design**: Gemini 3.7 analyzes document structure and drafts 3 to 6 core learning objectives with proportional question allocations.
 3. **Human-in-the-Loop Review**: LangGraph interrupts execution; learners/educators inspect, adjust, or approve the curriculum.
 4. **Adaptive MCQ & Socratic Tutoring**: Evaluates answers with zero LLM grading lag, offering multi-stage hints and on-demand conceptual coaching without leaking answers.
 5. **Bloom's Mastery Analytics**: Generates cognitive level breakdowns, weakness diagnostics, and targeted follow-up reading recommendations.
@@ -61,10 +61,12 @@ QuizLoop transforms static technical documents (PDF research papers, textbooks, 
 
 ## Key Technology Stack
 
-- **Backend Framework**: Python 3.13 + FastAPI + Uvicorn (Asynchronous, Type-safe)
-- **AI / LLM Core**: Google Gemini 3.7 Flash & Vertex AI (Structured Output + Dynamic Context Caching)
-- **Agent Orchestration**: LangGraph Python 1.x (Cyclic StateGraph + Checkpointer + `interrupt()` / `Command(resume=...)`)
-- **Database**: PostgreSQL 15+ (`asyncpg` connection pool + `TIMESTAMPTZ`)
+- **Backend / API**: TypeScript 5.x + Node.js 20+ (Next.js 16 App Router Route Handlers)
+- **AI / LLM Core**: Google Gemini 3.7 Flash & Vertex AI (Structured Output + Dynamic Context Caching) via `@google/genai`
+- **Agent Orchestration**: LangGraph.js 1.x (`@langchain/langgraph` — Cyclic StateGraph + `PostgresSaver` Checkpointer + `interrupt()` / `Command({ resume })`)
+- **Database**: PostgreSQL 15+ (`pg` connection pool + `TIMESTAMPTZ`)
+- **Validation**: Zod 4 (camelCase wire contracts)
 - **Storage**: Supabase Storage + Google AI Files API
-- **Observability**: LangSmith (`@traceable` LLM & Agent Run Trees)
+- **Observability**: LangSmith (LLM & Agent Run Trees)
 - **Frontend**: Next.js 16 + React 19 + Tailwind CSS + Framer Motion + Lucide React
+- **Testing**: Vitest (server + component suites)

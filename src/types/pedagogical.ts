@@ -1,5 +1,5 @@
 export interface QuizConfig {
-  total_questions: number;
+  totalQuestions: number;
   difficulty: "auto" | "beginner" | "intermediate" | "advanced";
 }
 
@@ -20,9 +20,9 @@ export interface MCQOption {
 
 export interface MCQItem {
   question: string;
-  scenario?: string;
+  scenario?: string | null;
   options: MCQOption[];
-  hint?: string;
+  hint?: string | null;
 }
 
 export interface SlotsProgress {
@@ -41,13 +41,13 @@ export interface AttemptRecord {
 }
 
 export interface LastResult {
-  verdict: "correct" | "incorrect";
-  explanation?: string;
-  hint?: string;
-  diagnosticFeedback?: string;
-  keyTakeaway?: string;
-  attemptNo?: number;
-  selectedLetter?: string;
+  verdict: "correct" | "incorrect" | null;
+  explanation?: string | null;
+  hint?: string | null;
+  diagnosticFeedback?: string | null;
+  keyTakeaway?: string | null;
+  attemptNo?: number | null;
+  selectedLetter?: string | null;
 }
 
 export interface PerObjectiveReport {
@@ -83,8 +83,8 @@ export interface QuizInterrupt {
   type: "quiz";
   questionIndex: number;
   totalQuestions: number;
-  objective: PlanObjectiveView;
-  mcq: MCQItem;
+  objective: PlanObjectiveView | null;
+  mcq: MCQItem | null;
   hintRevealed: boolean;
   coachingMessage?: string | null;
   lastResult?: LastResult | null;
@@ -94,12 +94,11 @@ export interface PlanObjectiveView {
   id: string;
   title: string;
   description: string;
-  blooms_level?: string;
   bloomsLevel?: string;
   difficulty: string;
-  question_count?: number;
   questionCount?: number;
   status?: string;
+  keyConcepts?: string[];
 }
 
 export interface ChatMessage {
@@ -118,35 +117,24 @@ export interface PedagogicalStateResponse {
   revision: number;
   planCapReached: boolean;
   slots: SlotsProgress | null;
-  currentObjectiveId?: string;
-  currentMCQ?: MCQItem;
+  currentObjective?: PlanObjectiveView | null;
+  currentMcq?: MCQItem | null;
   questionsDeck?: MCQItem[];
-  questions_deck?: MCQItem[];
   hintRevealed: boolean;
   coachingMessage?: string | null;
   lastResult?: LastResult | null;
   attempts: AttemptRecord[];
-  masterySummary?: MasterySummary;
+  summary?: MasterySummary | null;
   pendingInterrupt?: PlanReviewInterrupt | QuizInterrupt | null;
-  raw?: Record<string, unknown>;
 }
 
 export interface SubmitAnswerResponse {
   status: string;
   verdict: "correct" | "incorrect";
   selectedLetter?: string;
-  selected_letter?: string;
   diagnosticFeedback?: string;
-  diagnostic_feedback?: string;
   explanation?: string;
   hint?: string;
   keyTakeaway?: string;
-  key_takeaway?: string;
-  /** The next pre-generated question, returned directly with the verdict  - 
-   *  the frontend never polls for it. Present only when the answer was
-   *  correct and the deck has more questions. */
-  nextMCQ?: MCQItem;
-  nextMcq?: MCQItem;
-  next_mcq?: MCQItem;
+  nextMcq?: MCQItem | null;
 }
-
