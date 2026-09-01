@@ -22,8 +22,8 @@ Transform technical documents, research publications, and textbooks into structu
 
 ## Key Features
 
-- **Document Ingestion with Context Caching**: Ingest dense research papers, syllabi, and technical PDFs ($\le 25\text{MB}$) via the Google Gemini File API with token-aware context caching for reduced latency and token efficiency.
-- **Human-in-the-Loop (HITL) Curriculum Approval**: The AI Master Planner drafts a structured pedagogical curriculum; educators and learners inspect learning objectives, customize topic allocations, request prompt adjustments, or approve before question generation begins.
+- **Document Ingestion with Context Caching**: Ingest dense research papers, syllabi, and technical PDFs ($\le 25\text{MB}$) via Google Gemini/Vertex AI. With a real Developer API key, documents register with the Gemini File API for token-aware context caching; with Vertex AI credentials (empty or `AQ.`-prefixed key) files are transmitted as inline bytes via the global endpoint.
+- **Human-in-the-Loop (HITL) Curriculum Approval**: The AI Master Planner drafts a structured pedagogical curriculum; educators and learners inspect learning objectives, customize topic allocations, request prompt adjustments, or approve before question generation begins. Adjustments are **surgical** — feedback on a specific topic rewrites only that topic, while overall tuning re-drafts the whole plan.
 - **Single-Pass Deck Synthesis**: Pre-generates the entire assessment deck in a single structured Gemini 3.7 call to ensure topic coherence, zero runtime latency per question, and strict answer-key isolation.
 - **Interactive Socratic Coaching**: Delivers scenario-based questions with multi-tier progressive hints and grounded on-demand conceptual explanations without spoiling answers.
 - **Comprehensive Mastery Reporting**: Produces Bloom's taxonomy analytics, objective-by-objective proficiency scores, strength and growth diagnostics, and personalized remediation reading plans.

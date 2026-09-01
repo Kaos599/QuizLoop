@@ -60,7 +60,7 @@ stateDiagram-v2
 - **Role**: Educational curriculum architect.
 - **Model**: `gemini-3.7-flash` with structured schema enforcement (`PlanArraySchema`).
 - **Objective**: Analyze the technical document and extract **3 to `min(totalQuestions, 6)`** core learning objectives. Deterministically allocate question budgets across objectives via `distributeQuestionBudget` (sum strictly equals `totalQuestions`, clamped 3–10).
-- **Feedback Ingestion**: On `adjust`, re-drafts **surgically** — the existing plan is retained (objective `id`s preserved for learner continuity) and refined against `planFeedback`. On `reject_all`, the plan is wiped and regenerated fresh.
+- **Feedback Ingestion**: On `adjust` **without** `topicFeedback`, re-drafts the entire plan — the existing plan is retained (objective `id`s preserved for learner continuity) and refined against `planFeedback`. On `reject_all`, the plan is wiped and regenerated fresh. Per-topic `topicFeedback` never reaches this node (see `surgicallyRevisePlanNode`).
 - **Defensive parsing**: `extractItemsFromJson` unwraps both naked arrays and schema-wrapped payloads (`objectives` / `plan` / `items` fallback keys).
 
 ---
@@ -68,9 +68,10 @@ stateDiagram-v2
 ### Stage 2: Plan Review Node (`plan_review_node`)
 - **Role**: Human-in-the-loop interruption barrier.
 - **Mechanism**: `interrupt({ type: "plan_review", revision, plan, quizConfig, capReached, maxRevisions: 3, prompt })`.
-- **Resume Contract**: receives `{ decision, feedback? }` where `decision` is `approve | adjust | reject_all`:
+- **Resume Contract**: receives `{ decision, feedback?, topicFeedback? }` where `decision` is `approve | adjust | reject_all`:
   - `approve`: builds the slot schedule and advances to `generate_mcq_batch_node`.
-  - `adjust`: routes back to `plan_node` with `revision + 1` and feedback (surgical refinement).
+  - `adjust` with `topicFeedback` (array of `{ objectiveId, note }`): routes to `surgicallyRevisePlanNode` — only the targeted objectives are rewritten; all other topics are preserved byte-for-byte. The optional `feedback` string is folded into each surgical rewrite as overall context.
+  - `adjust` with only `feedback`: routes back to `plan_node` with `revision + 1` and feedback (full re-draft).
   - `reject_all`: routes back to `plan_node` with `revision + 1` and a wiped plan.
   - Empty feedback (not `reject_all`): routes to `plan_clarify_node` instead of blind regeneration.
 - **Safety Fallback**: if `revision > MAX_PLAN_REVISIONS` (3) → `simplify_plan_node` synthesizes a compact 3-objective plan with `planCapReached: true`; a subsequent rejection with the cap reached **locks in the simplified plan** and advances to deck generation (no dead-ends).
@@ -81,6 +82,12 @@ stateDiagram-v2
 
 ### Stage 2c: Simplify Plan Node (`simplify_plan_node`)
 - **Role**: Cap fallback; regenerates a pragmatic 3-objective plan using the student's recurring feedback, then returns to `plan_review_node` with `planCapReached: true`.
+
+### Stage 2d: Surgical Revision Node (`surgicallyRevisePlanNode`)
+- **Role**: Per-topic refinement — rewrites **only** the objectives referenced by `topicFeedback`, preserving every other topic byte-for-byte (same id, title, description, Bloom's level, difficulty, question count, and key concepts).
+- **Mechanism**: For each targeted objective, `rewriteSingleObjective` issues one structured LLM call (`plan_surgical_revision`, `PlanArraySchema`) containing the source document, the current objective, the topic note, and any overall `feedback` context. The objective's `id` is always preserved for learner continuity.
+- **Budget Rebalancing**: Untouched objectives keep their `questionCount` exactly; the remaining question budget is redistributed only among the targeted objectives so the total still equals `totalQuestions`.
+- **Output**: returns to `plan_review_node` with `planStatus: "review"` and `revision + 1` (cap not affected).
 
 ---
 

@@ -23,6 +23,7 @@ flowchart TD
 
     subgraph Agents [Agent Tier: LangGraph 1.x StateGraph]
         PlanNode[1. Plan Node\nCurriculum Design]
+        SurgicalNode[1d. Surgical Revision Node\nPer-Topic Rewrite Only]
         PlanReviewNode[2. Plan Review Node\ninterrupt: Await Decision]
         GenerateDeckNode[3. Generate MCQ Deck Node\nSingle-Pass Synthesis]
         QuizInteractNode[4. Quiz Interaction Node\ninterrupt: Await Answer/Action]
@@ -99,7 +100,7 @@ flowchart TD
 ### Agent Tier (LangGraph.js 1.x Pedagogical Graph)
 - **Orchestration**: Asynchronous, cyclic StateGraph (`@langchain/langgraph`) with native `interrupt()` and `Command({ resume, goto, update })` support; production uses `PostgresSaver` (durable cross-request resumes), tests use `MemorySaver`.
 - **Answer Security**: The internal state (`mcq_queue`, `current_mcq`) retains full answer metadata in server memory/DB snapshots, while every public endpoint re-serializes through the answer-stripping helpers (`publicMcq`, `publicLastResult`, `serializePublicState`) to prevent client-side inspection.
-- **Refinement Loop**: The plan review step supports up to 3 iterative re-drafts with human feedback, a clarifying micro-interrupt for empty feedback, and a simplified-plan fallback before locking in the closest version.
+- **Refinement Loop**: The plan review step supports up to 3 iterative re-drafts with human feedback, a clarifying micro-interrupt for empty feedback, and a simplified-plan fallback before locking in the closest version. Adjustments are **surgical by default**: per-topic `topicFeedback` routes to `surgicallyRevisePlanNode`, which rewrites only the targeted objectives (byte-for-byte preserving all others), while overall `feedback` re-drafts the full plan via `plan_node`.
 
 ### Persistence & Storage Tier
 - **PostgreSQL Database**:
@@ -107,5 +108,5 @@ flowchart TD
   - `summary_report`: Stores final mastery assessments, cognitive level scores, strengths, and recommendations.
   - `checkpoints`: Managed by LangGraph checkpointers for durable thread state.
 - **Supabase Storage**: Retains raw PDF document uploads.
-- **Google Gemini File API**: Provides persistent file handles for high-throughput multimodal Gemini context caching.
+- **Google Gemini / Vertex AI**: Generation runs on Gemini 3.7 Flash (Vertex AI global endpoint). With a Vertex-style credential (empty `GEMINI_API_KEY` or an `AQ.`-prefixed token), the Developer File API is bypassed and documents are transmitted as inline bytes; with a real Developer API key, the File API provides persistent file handles for context caching.
 - **LangSmith**: Full agent tracing with run trees for monitoring latency, token costs, and prompt executions.

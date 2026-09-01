@@ -124,11 +124,17 @@ Submit a Human-in-the-Loop decision on the proposed curriculum plan. Dispatches 
 - **Request Body**:
   ```json
   {
-    "decision": "approve",
-    "feedback": "Focus more heavily on latency trade-offs"
+    "decision": "adjust",
+    "feedback": "Focus more heavily on latency trade-offs",
+    "topicFeedback": [
+      { "objectiveId": "obj-2", "note": "Simplify this topic" }
+    ]
   }
   ```
   (`decision`: `approve` | `adjust` | `reject_all`; `feedback` optional, used for re-drafting)
+- **Per-topic vs overall re-draft**:
+  - When `topicFeedback` (array of `{ objectiveId, note }`) is provided, **only** the listed objectives are surgically rewritten by the LLM; every other topic is preserved byte-for-byte (same id, title, description, Bloom's level, difficulty, and key concepts). The `feedback` string, if present, is folded into each surgical rewrite as overall context.
+  - When `topicFeedback` is `null`/empty, the **entire plan** is re-drafted against the `feedback` message.
 - **Response** (`200 OK`):
   ```json
   {
