@@ -1,7 +1,16 @@
 import logging
 import time
 import os
+import sys
+import asyncio
 from contextlib import asynccontextmanager
+
+if sys.platform == "win32":
+    try:
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    except Exception:
+        pass
+
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -34,6 +43,11 @@ async def lifespan(app: FastAPI):
         await run_db_migrations()
     except Exception as e:
         logger.error(f"Migration error during startup: {e}", exc_info=True)
+    try:
+        from app.agents.pedagogical_graph import get_graph
+        await get_graph()
+    except Exception as e:
+        logger.warning(f"Checkpointer graph initialization warning: {e}")
     yield
     # Shutdown
     logger.info("Shutting down QuizLoop FastAPI service...")

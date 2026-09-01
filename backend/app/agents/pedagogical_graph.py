@@ -1160,7 +1160,7 @@ async def get_graph():
                         "prepare_threshold": 0,  # Disable prepared statements for Supabase transaction pooler (PgBouncer)
                     },
                     check=AsyncConnectionPool.check_connection,
-                    max_idle_sec=30.0,
+                    max_idle=30.0,
                 )
                 await pool.open(wait=True)
                 _CHECKPOINTER_POOL = pool
