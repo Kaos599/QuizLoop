@@ -66,29 +66,29 @@ flowchart TD
         GeminiFileAPI[("Google Gemini File API\n(Cached Document Handles)")]
     end
 
-    UploadUI -->|1. Upload PDF| UploadAPI
-    UploadAPI -->|Store Blob| SupabaseStorage
-    UploadAPI -->|Register File| GeminiFileAPI
-    UploadAPI -->|Initialize Session| Postgres
-    UploadUI -->|2. Generate Quiz (Config)| GenerateAPI
-    GenerateAPI -->|Spawn Pipeline| PlanNode
+    UploadUI -->|"1. Upload PDF"| UploadAPI
+    UploadAPI -->|"Store Blob"| SupabaseStorage
+    UploadAPI -->|"Register File"| GeminiFileAPI
+    UploadAPI -->|"Initialize Session"| Postgres
+    UploadUI -->|"2. Generate Quiz (Config)"| GenerateAPI
+    GenerateAPI -->|"Spawn Pipeline"| PlanNode
 
     PlanNode --> Interrupt1
-    Interrupt1 -.->|Pause State| Postgres
-    HITL -->|3. Approve / Adjust / Reject| ApprovalAPI
-    ApprovalAPI -->|Command resume| Interrupt1
-    Interrupt1 -->|On Adjust: Re-draft| PlanNode
-    Interrupt1 -->|On Approve| DeckNode
+    Interrupt1 -.->|"Pause State"| Postgres
+    HITL -->|"3. Approve / Adjust / Reject"| ApprovalAPI
+    ApprovalAPI -->|"Command resume"| Interrupt1
+    Interrupt1 -->|"On Adjust: Re-draft"| PlanNode
+    Interrupt1 -->|"On Approve"| DeckNode
 
     DeckNode --> Interrupt2
-    Interrupt2 -.->|Serve Question| QuizUI
-    QuizUI -->|4. Submit / Hint / Learn More| QuizAPI
-    QuizAPI -->|Command resume| EvalNode
-    EvalNode -->|Next Question| DeckNode
-    EvalNode -->|Completed Deck| SummaryNode
+    Interrupt2 -.->|"Serve Question"| QuizUI
+    QuizUI -->|"4. Submit / Hint / Learn More"| QuizAPI
+    QuizAPI -->|"Command resume"| EvalNode
+    EvalNode -->|"Next Question"| DeckNode
+    EvalNode -->|"Completed Deck"| SummaryNode
 
-    SummaryNode -->|5. Save Mastery Report| Postgres
-    ReportAPI -->|Fetch Report| Postgres
+    SummaryNode -->|"5. Save Mastery Report"| Postgres
+    ReportAPI -->|"Fetch Report"| Postgres
     Postgres --> MasteryUI
 ```
 
