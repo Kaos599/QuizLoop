@@ -825,7 +825,7 @@ export async function simplifyPlanNode(state: PedagogicalState): Promise<Partial
 
   const filePart = await getGeminiPartForFile(state.fileUri);
   const respText = await generateGeminiContent({
-    contents: [filePart, "Produce the simplified plan JSON."],
+    contents: [filePart, instruction],
     systemInstruction: "Respond only with the JSON plan conforming to the schema.",
     responseSchema: PlanArraySchema,
     thinkingBudget: 0,
@@ -1454,7 +1454,7 @@ export async function getPedagogicalState(sessionId: string): Promise<Record<str
     const graph = await getGraph();
     const config = threadConfig(sessionId);
     stateTuple = await graph.getState(config);
-  } catch (err) {
+  } catch (_err) {
     // Checkpointer or graph lookup error, fall back to DB
   }
 

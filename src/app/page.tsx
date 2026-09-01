@@ -2,6 +2,7 @@
 
 import { PDFUpload } from "@/components/pdf-upload";
 import Link from "next/link";
+import Image from "next/image";
 import {
   FileText,
   Sparkles,
@@ -27,7 +28,7 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-18 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center">
-              <img src="/logo.png" alt="Memorang" className="h-8 sm:h-9 w-auto" />
+              <Image src="/logo.png" alt="Memorang" width={160} height={36} className="h-8 sm:h-9 w-auto" priority />
             </Link>
             <div className="h-5 w-px bg-slate-200 hidden sm:block" />
             <span className="text-xs font-semibold text-slate-600 hidden sm:inline">
@@ -291,7 +292,7 @@ export default function Home() {
       <footer className="w-full border-t border-slate-200 bg-white py-12 px-6 sm:px-12 text-slate-600 text-xs sm:text-sm">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-4">
-            <img src="/logo.png" alt="Memorang" className="h-8 w-auto" />
+            <Image src="/logo.png" alt="Memorang" width={140} height={32} className="h-8 w-auto" />
             <div className="h-5 w-px bg-slate-200 hidden sm:block" />
             <span className="text-slate-500 text-xs sm:text-sm">
               Built for Memorang Technical Assessment Evaluation

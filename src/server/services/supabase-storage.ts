@@ -41,7 +41,9 @@ export async function uploadPdfToSupabase(
     });
     if (!bucketResp.ok && bucketResp.status !== 409) {
       const errorText = await bucketResp.text();
-      console.warn(`Supabase bucket creation warning (status ${bucketResp.status}): ${errorText}`);
+      if (!errorText.includes("BucketAlreadyExists") && !errorText.includes("already exists")) {
+        console.warn(`Supabase bucket creation warning (status ${bucketResp.status}): ${errorText}`);
+      }
     }
   } catch (err) {
     console.warn("Supabase bucket creation warning:", err);

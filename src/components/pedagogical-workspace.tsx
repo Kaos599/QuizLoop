@@ -1,12 +1,10 @@
 "use client";
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import Image from "next/image";
 import {
   PedagogicalStateResponse,
   PlanObjectiveView,
-  MCQItem,
   LastResult,
   SubmitAnswerResponse,
 } from "@/types/pedagogical";
@@ -502,7 +500,7 @@ export function PedagogicalWorkspace({ sessionId }: PedagogicalWorkspaceProps) {
           </Link>
           <div className="h-4 w-px bg-slate-200 hidden sm:block" />
           <Link href="/" prefetch={false} className="flex items-center">
-            <img src="/logo.png" alt="Memorang" className="h-7 w-auto" />
+            <Image src="/logo.png" alt="Memorang" width={140} height={28} className="h-7 w-auto" />
           </Link>
           <div className="h-4 w-px bg-slate-200 hidden sm:block" />
           <div className="hidden md:flex items-center gap-1.5 text-xs text-slate-600 font-medium">
