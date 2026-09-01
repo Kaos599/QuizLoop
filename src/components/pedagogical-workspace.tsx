@@ -351,7 +351,7 @@ export function PedagogicalWorkspace({ sessionId }: PedagogicalWorkspaceProps) {
 
   /* ---- plan ---- */
   const dispatchTask = useCallback(
-    async (url: string, body: unknown, action: string) => {
+    async (url: string, body: unknown, action: string): Promise<string | null> => {
       setActionError(null);
       setBusy(true);
       try {
@@ -363,11 +363,13 @@ export function PedagogicalWorkspace({ sessionId }: PedagogicalWorkspaceProps) {
         const taskId = res?.task_id || res?.taskId;
         if (taskId) {
           setActiveTask({ id: taskId, action });
-          return;
+          return taskId;
         }
         await fetchState();
+        return null;
       } catch (e) {
         setActionError(e instanceof Error ? e.message : "Something went wrong. Please try again.");
+        return null;
       } finally {
         setBusy(false);
       }
@@ -377,25 +379,32 @@ export function PedagogicalWorkspace({ sessionId }: PedagogicalWorkspaceProps) {
 
   const handleApprovePlan = async () => {
     setIsApprovingPlan(true);
-    await dispatchTask(`/api/learning/${sessionId}/approve-plan`, { decision: "approve" }, "plan_approval");
+    const taskId = await dispatchTask(
+      `/api/learning/${sessionId}/approve-plan`,
+      { decision: "approve" },
+      "plan_approval",
+    );
+    if (!taskId) setIsApprovingPlan(false);
   };
 
   const handleAdjustPlan = async (feedback: string) => {
     setIsAdjustingPlan(true);
-    await dispatchTask(
+    const taskId = await dispatchTask(
       `/api/learning/${sessionId}/approve-plan`,
       { decision: "adjust", feedback },
       "plan_approval",
     );
+    if (!taskId) setIsAdjustingPlan(false);
   };
 
   const handleRejectAll = async () => {
     setIsAdjustingPlan(true);
-    await dispatchTask(
+    const taskId = await dispatchTask(
       `/api/learning/${sessionId}/approve-plan`,
       { decision: "reject_all" },
       "plan_approval",
     );
+    if (!taskId) setIsAdjustingPlan(false);
   };
 
   /* ---- quiz ---- */

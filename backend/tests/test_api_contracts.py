@@ -53,6 +53,13 @@ def test_camel_case_generate_quiz_contract():
     assert resp_dump["taskId"] == "task-456"
     assert resp_dump["status"] == "generating"
 
+def test_generate_request_accepts_snake_and_camel_body():
+    """Frontend sends snake_case, docs advertise camelCase; both must validate."""
+    snake = GenerateQuizRequest(total_questions=3, difficulty="intermediate")
+    camel = GenerateQuizRequest(totalQuestions=3, difficulty="intermediate")
+    assert snake.total_questions == camel.total_questions == 3
+    assert snake.difficulty == camel.difficulty == "intermediate"
+
 def test_camel_case_submit_mcq_response():
     next_q = MCQItemPublic(
         question="Next question?",
