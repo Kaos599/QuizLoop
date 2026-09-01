@@ -118,7 +118,7 @@ async function callVertexGlobal(
   token: string
 ): Promise<{ text: string; usage: any; durationMs: number; usedModel: string }> {
   const config = getServerConfig();
-  const projectId = config.googleCloudProject || "gen-lang-client-0470874118";
+  const projectId = config.googleCloudProject;
   const location = config.googleCloudLocation || "global";
   const targetModel = options.modelName || config.geminiModelName || "gemini-3.7-flash";
 
@@ -274,7 +274,7 @@ export async function generateGeminiContent(
       totalTokens = usage?.totalTokenCount ?? promptTokens + outputTokens;
 
       if (usage?.candidatesTokensDetails && usage.candidatesTokensDetails.length > 0) {
-        thoughtTokens = usage.candidatesTokensDetails[0].thoughtTokenCount ?? 0;
+        thoughtTokens = (usage.candidatesTokensDetails[0] as any)?.thoughtTokenCount ?? 0;
       }
 
       if (text) {
