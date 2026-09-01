@@ -116,6 +116,7 @@ Stores post-assessment mastery analytics and performance diagnostics.
 | `session_id` | `UUID` | `NOT NULL, UNIQUE, FK -> sessions(id)` | Associated session ID. |
 | `summary` | `JSONB` | `NOT NULL` | Comprehensive mastery payload (scores, Bloom's levels, strengths, growth areas, recommendations). |
 | `created_at` | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | Report generation timestamp. |
+| `updated_at` | `TIMESTAMPTZ` | `NOT NULL, DEFAULT NOW()` | Last update timestamp. |
 
 ---
 

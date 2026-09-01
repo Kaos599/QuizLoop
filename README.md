@@ -44,6 +44,7 @@ flowchart TD
 
     subgraph Backend ["API Tier (FastAPI + Asyncpg)"]
         UploadAPI["POST /api/upload"]
+        GenerateAPI["POST /api/learning/{id}/generate"]
         StateAPI["GET /api/learning/{id}/state"]
         ApprovalAPI["POST /api/learning/{id}/approve-plan"]
         QuizAPI["POST /api/learning/{id}/submit-mcq\nPOST /api/learning/{id}/hint\nPOST /api/learning/{id}/learn-more"]
@@ -69,23 +70,24 @@ flowchart TD
     UploadAPI -->|Store Blob| SupabaseStorage
     UploadAPI -->|Register File| GeminiFileAPI
     UploadAPI -->|Initialize Session| Postgres
-    UploadAPI -->|Spawn Pipeline| PlanNode
+    UploadUI -->|2. Generate Quiz (Config)| GenerateAPI
+    GenerateAPI -->|Spawn Pipeline| PlanNode
 
     PlanNode --> Interrupt1
     Interrupt1 -.->|Pause State| Postgres
-    HITL -->|2. Approve / Adjust / Reject| ApprovalAPI
+    HITL -->|3. Approve / Adjust / Reject| ApprovalAPI
     ApprovalAPI -->|Command resume| Interrupt1
     Interrupt1 -->|On Adjust: Re-draft| PlanNode
     Interrupt1 -->|On Approve| DeckNode
 
     DeckNode --> Interrupt2
     Interrupt2 -.->|Serve Question| QuizUI
-    QuizUI -->|3. Submit / Hint / Learn More| QuizAPI
+    QuizUI -->|4. Submit / Hint / Learn More| QuizAPI
     QuizAPI -->|Command resume| EvalNode
     EvalNode -->|Next Question| DeckNode
     EvalNode -->|Completed Deck| SummaryNode
 
-    SummaryNode -->|4. Save Mastery Report| Postgres
+    SummaryNode -->|5. Save Mastery Report| Postgres
     ReportAPI -->|Fetch Report| Postgres
     Postgres --> MasteryUI
 ```
