@@ -346,22 +346,33 @@ async function main() {
     // -------------------------------------------------------------------------
     await runStage(7, "MCQ Answering & Progress Loop", async () => {
       // Helper to query internal question from DB
-      async function getInternalMcqFromDb() {
+      async function getDeckFromDb(): Promise<any[]> {
         const row = await queryRow(
-          `SELECT current_mcq AS "currentMcq" FROM pedagogical_sessions WHERE session_id = $1::uuid`,
+          `SELECT current_mcq AS "currentMcq", mcq_queue AS "mcqQueue" FROM pedagogical_sessions WHERE session_id = $1::uuid`,
           [sessionId]
         );
-        if (!row || !row.currentMcq) return null;
-        return typeof row.currentMcq === "string" ? JSON.parse(row.currentMcq) : row.currentMcq;
+        if (!row) return [];
+        const queue = row.mcqQueue
+          ? typeof row.mcqQueue === "string"
+            ? JSON.parse(row.mcqQueue)
+            : row.mcqQueue
+          : [];
+        if (Array.isArray(queue) && queue.length > 0) return queue;
+        if (row.currentMcq) {
+          const curr = typeof row.currentMcq === "string" ? JSON.parse(row.currentMcq) : row.currentMcq;
+          return [curr];
+        }
+        return [];
       }
+
+      const deck = await getDeckFromDb();
+      assert(deck.length >= 3, `Expected at least 3 questions in deck, got ${deck.length}`);
 
       // 1. Test Deliberate Wrong Attempt on Question 1
       console.log("   --- Testing Deliberate Wrong Attempt on Question 1 ---");
-      const internal1 = await getInternalMcqFromDb();
-      assert(internal1, "Internal MCQ missing in DB");
-
-      const correctLetter1 = internal1._answer || internal1.options.find((o: any) => o.isCorrect || o.is_correct)?.letter || "A";
-      const wrongLetter = ["A", "B", "C", "D"].find((l) => l !== correctLetter1.toUpperCase()) || "B";
+      const internal1 = deck[0];
+      const correctLetter1 = (internal1._answer || internal1.options?.find((o: any) => o.isCorrect || o.is_correct)?.letter || "A").toUpperCase();
+      const wrongLetter = ["A", "B", "C", "D"].find((l) => l !== correctLetter1) || "B";
 
       console.log(`   Correct answer is '${correctLetter1}'. Submitting deliberate wrong answer '${wrongLetter}'...`);
       const { ok: okWrong, data: wrongData, text: txtWrong } = await fetchJson(
@@ -396,9 +407,8 @@ async function main() {
 
       // 3. Question 2
       console.log("\n   --- Answering Question 2 ---");
-      const internal2 = await getInternalMcqFromDb();
-      assert(internal2, "Internal MCQ 2 missing in DB");
-      const correctLetter2 = internal2._answer || internal2.options.find((o: any) => o.isCorrect || o.is_correct)?.letter || "A";
+      const internal2 = deck[1];
+      const correctLetter2 = (internal2._answer || internal2.options?.find((o: any) => o.isCorrect || o.is_correct)?.letter || "A").toUpperCase();
 
       console.log(`   Question 2: "${internal2.question || internal2.scenario}"`);
       console.log(`   Submitting correct answer '${correctLetter2}' for Question 2...`);
@@ -416,9 +426,8 @@ async function main() {
 
       // 4. Question 3
       console.log("\n   --- Answering Question 3 ---");
-      const internal3 = await getInternalMcqFromDb();
-      assert(internal3, "Internal MCQ 3 missing in DB");
-      const correctLetter3 = internal3._answer || internal3.options.find((o: any) => o.isCorrect || o.is_correct)?.letter || "A";
+      const internal3 = deck[2];
+      const correctLetter3 = (internal3._answer || internal3.options?.find((o: any) => o.isCorrect || o.is_correct)?.letter || "A").toUpperCase();
 
       console.log(`   Question 3: "${internal3.question || internal3.scenario}"`);
       console.log(`   Submitting correct answer '${correctLetter3}' for Question 3 (final question)...`);
