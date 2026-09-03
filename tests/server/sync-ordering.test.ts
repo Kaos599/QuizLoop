@@ -59,7 +59,7 @@ describe("resume stream event -> syncStateToDb ordering", () => {
       { ...config, streamMode: "updates" }
     );
     let eventCount = 0;
-    for await (const event of resumeStream) {
+    for await (const _event of resumeStream) {
       eventCount += 1;
       const current = await graph.getState(config);
       if (current?.values) {
@@ -70,7 +70,7 @@ describe("resume stream event -> syncStateToDb ordering", () => {
     console.log("events:", eventCount);
     console.log("syncedStates:", JSON.stringify(syncedStates, null, 2));
 
-    const finalState = await graph.getState(config);
+    const _finalState = await graph.getState(config);
     const lastSync = syncedStates[syncedStates.length - 1];
     expect(lastSync.planStatus).toBe("review");
     expect(lastSync.planTitles[0]).toBe("Advanced Attention Mechanics");

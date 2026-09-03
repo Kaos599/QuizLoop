@@ -75,9 +75,9 @@ export async function POST(
       verdict: isCorrect ? "correct" : "incorrect",
       selectedLetter,
       diagnosticFeedback,
-      explanation: internalMcq.explanation || "",
+      explanation: isCorrect ? (internalMcq.explanation || "") : "",
       hint: internalMcq.hint || "",
-      keyTakeaway: internalMcq.keyTakeaway ?? internalMcq.key_takeaway ?? "",
+      keyTakeaway: isCorrect ? (internalMcq.keyTakeaway ?? internalMcq.key_takeaway ?? "") : "",
       nextMcq: nextMcqPublic,
     });
   } catch (err: any) {
