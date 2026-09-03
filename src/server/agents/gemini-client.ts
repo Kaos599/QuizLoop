@@ -256,7 +256,7 @@ export async function generateGeminiContent(
 
       if (responseSchema) {
         reqConfig.responseMimeType = "application/json";
-        reqConfig.responseSchema = z.toJSONSchema(responseSchema);
+        reqConfig.responseSchema = cleanJsonSchema(z.toJSONSchema(responseSchema));
       }
 
       const startTime = Date.now();

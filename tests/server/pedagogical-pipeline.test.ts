@@ -389,4 +389,55 @@ describe("Pedagogical Pipeline", () => {
     expect(internalMcq?.options.some((o: any) => o.diagnosticFeedback || o.diagnostic_feedback)).toBe(true);
     expect(internalMcq?.options.some((o: any) => o.isCorrect || o.is_correct)).toBe(true);
   });
+
+  describe("normalizeMcqItem Schema & Response Key Compliance", () => {
+    it("resolves correct option from schema correctLetter response key", () => {
+      const rawMcq = {
+        question: "Which optimizer is used?",
+        options: [
+          { letter: "A", text: "SGD" },
+          { letter: "B", text: "AdamW" },
+          { letter: "C", text: "RMSProp" },
+        ],
+        correctLetter: "B",
+        explanation: "AdamW decouples weight decay.",
+      };
+
+      const normalized = pg.normalizeMcqItem(rawMcq);
+      const correctOpts = normalized.options.filter((o) => o.isCorrect);
+      expect(correctOpts.length).toBe(1);
+      expect(correctOpts[0].letter).toBe("B");
+      expect(normalized.correctLetter).toBe("B");
+    });
+
+    it("throws schema non-compliance error when response key is missing", () => {
+      const rawMcq = {
+        question: "What is 2+2?",
+        options: [
+          { letter: "A", text: "3", isCorrect: false },
+          { letter: "B", text: "5", isCorrect: false },
+        ],
+        explanation: "Neither is correct",
+      };
+
+      expect(() => pg.normalizeMcqItem(rawMcq)).toThrow(
+        /\[Schema Non-Compliance\]/
+      );
+    });
+
+    it("throws schema non-compliance error when multiple options are flagged without explicit key", () => {
+      const rawMcq = {
+        question: "Select one:",
+        options: [
+          { letter: "A", text: "First", isCorrect: true },
+          { letter: "B", text: "Second", isCorrect: true },
+        ],
+        explanation: "Ambiguous",
+      };
+
+      expect(() => pg.normalizeMcqItem(rawMcq)).toThrow(
+        /\[Schema Non-Compliance\]/
+      );
+    });
+  });
 });

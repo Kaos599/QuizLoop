@@ -83,6 +83,7 @@ export const MCQItemSchema = z.object({
   scenario: z.string(),
   question: z.string(),
   options: z.array(MCQOptionSchema),
+  correctLetter: z.enum(["A", "B", "C", "D"]).optional(),
   explanation: z.string(),
   hint: z.string(),
   keyTakeaway: z.string(),

@@ -1,5 +1,3 @@
-import fs from "fs";
-import path from "path";
 import { ensureSchema, closeDbPool } from "../src/server/db";
 
 async function main() {

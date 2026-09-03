@@ -64,6 +64,79 @@ describe("API Contracts & Schemas", () => {
     expect(data.error).toBe("Session not found.");
   });
 
+  it("submit-mcq masks explanation and keyTakeaway on incorrect attempt", async () => {
+    vi.mocked(queryRow).mockResolvedValue({ id: "00000000-0000-0000-0000-000000000000" });
+    vi.spyOn(pg, "getInternalCurrentMcq").mockResolvedValue({
+      question: "What is attention?",
+      options: [
+        { letter: "A", text: "Linear", isCorrect: false, diagnosticFeedback: "Not linear" },
+        { letter: "B", text: "Quadratic", isCorrect: true, diagnosticFeedback: "Correct!" },
+      ],
+      explanation: "Self-attention has quadratic complexity in sequence length.",
+      hint: "Think about pairwise dot products.",
+      keyTakeaway: "Attention scales as O(N^2).",
+      _answer: "B",
+    });
+    vi.spyOn(pg, "resumePedagogicalPipeline").mockResolvedValue(true);
+
+    const req = new NextRequest(
+      "http://localhost/api/learning/00000000-0000-0000-0000-000000000000/submit-mcq",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ selectedLetter: "A" }),
+      }
+    );
+    const res = await submitMcqHandler(req, {
+      params: Promise.resolve({ sessionId: "00000000-0000-0000-0000-000000000000" }),
+    });
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.verdict).toBe("incorrect");
+    expect(data.selectedLetter).toBe("A");
+    expect(data.diagnosticFeedback).toBe("Not linear");
+    expect(data.hint).toBe("Think about pairwise dot products.");
+    // MUST BE MASKED:
+    expect(data.explanation).toBe("");
+    expect(data.keyTakeaway).toBe("");
+  });
+
+  it("submit-mcq includes explanation and keyTakeaway on correct attempt", async () => {
+    vi.mocked(queryRow).mockResolvedValue({ id: "00000000-0000-0000-0000-000000000000" });
+    vi.spyOn(pg, "getInternalCurrentMcq").mockResolvedValue({
+      question: "What is attention?",
+      options: [
+        { letter: "A", text: "Linear", isCorrect: false, diagnosticFeedback: "Not linear" },
+        { letter: "B", text: "Quadratic", isCorrect: true, diagnosticFeedback: "Correct!" },
+      ],
+      explanation: "Self-attention has quadratic complexity in sequence length.",
+      hint: "Think about pairwise dot products.",
+      keyTakeaway: "Attention scales as O(N^2).",
+      _answer: "B",
+    });
+    vi.spyOn(pg, "resumePedagogicalPipeline").mockResolvedValue(true);
+
+    const req = new NextRequest(
+      "http://localhost/api/learning/00000000-0000-0000-0000-000000000000/submit-mcq",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ selectedLetter: "B" }),
+      }
+    );
+    const res = await submitMcqHandler(req, {
+      params: Promise.resolve({ sessionId: "00000000-0000-0000-0000-000000000000" }),
+    });
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.verdict).toBe("correct");
+    expect(data.selectedLetter).toBe("B");
+    expect(data.explanation).toBe("Self-attention has quadratic complexity in sequence length.");
+    expect(data.keyTakeaway).toBe("Attention scales as O(N^2).");
+  });
+
   it("UploadResponseSchema adheres strictly to camelCase wire schema", () => {
     const parsed = UploadResponseSchema.parse({
       sessionId: "test-123",
